@@ -1,0 +1,11 @@
+extend = "pyproject.toml"
+line-length = 120
+
+[lint]
+extend-select = ["E501"]
+
+[format]
+skip-magic-trailing-comma = true
+
+[lint.isort]
+split-on-trailing-comma = false
