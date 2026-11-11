@@ -1,10 +1,10 @@
+from collections.abc import Mapping
 from dataclasses import asdict
-from typing import Any, Mapping
+from typing import Any
 
 from mapping.identifiers import make_id
 from mapping.normalizers import normalize_amount, normalize_date
 from models.unified import Contract
-
 
 CONTRACT_FIELDS = {
     "abassurance": {

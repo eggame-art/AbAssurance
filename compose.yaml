@@ -1,0 +1,80 @@
+
+name: abassurance
+
+services:
+  oracle:
+    image: gvenzl/oracle-free:23.26.3-slim
+    environment:
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD:?Required}
+      APP_USER: ABASSURANCE
+      APP_USER_PASSWORD: ${ORACLE_APP_PASSWORD:?Required}
+    ports:
+      - "127.0.0.1:${ORACLE_PORT:-1521}:1521"
+    volumes:
+      - oracle-data:/opt/oracle/oradata
+      - ./database/oracle/init:/container-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 120s
+    restart: unless-stopped
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD:?Required}
+    ports:
+      - "127.0.0.1:${SQLSERVER_PORT:-1433}:1433"
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - 'SQLCMDPASSWORD="$$MSSQL_SA_PASSWORD" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -l 5 -Q "SELECT 1" > /dev/null'
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
+    restart: unless-stopped
+
+  sqlserver-init:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    depends_on:
+      sqlserver:
+        condition: service_healthy
+    environment:
+      SQLCMDPASSWORD: ${MSSQL_SA_PASSWORD:?Required}
+    volumes:
+      - ./database/sqlserver/init:/init:ro
+    entrypoint: ["/bin/bash", "/init/init.sh"]
+    restart: "no"
+
+  pipeline:
+    profiles: ["tools"]
+    build: .
+    env_file: .env
+    environment:
+      ORACLE_DSN: oracle:1521/${ORACLE_SERVICE:-FREEPDB1}
+      SQLSERVER_HOST: sqlserver
+      SQLSERVER_PORT: "1433"
+      SQLSERVER_TRUST_CERTIFICATE: ${SQLSERVER_TRUST_CERTIFICATE:-yes}
+      PIPELINE_OUTPUT_DIR: /app/data/processed
+    depends_on:
+      oracle:
+        condition: service_healthy
+      sqlserver:
+        condition: service_healthy
+      sqlserver-init:
+        condition: service_completed_successfully
+    volumes:
+      - .:/app
+
+volumes:
+  oracle-data:
+  sqlserver-data:
