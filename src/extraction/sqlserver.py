@@ -4,7 +4,7 @@ import pyodbc
 
 from extraction.common import extract_records
 from extraction.config import SQLServerConfig, load_settings
-from shared.errors import ExtractionError, ensure, error_context
+from shared.errors import ExtractionError, error_context
 from shared.types import Record
 
 SQLSERVER_TABLES = {
@@ -22,23 +22,22 @@ def _odbc_value(value: str) -> str:
 def connect_sqlserver(
     database: str | None = None, *, config: SQLServerConfig | None = None, autocommit: bool = False
 ) -> pyodbc.Connection:
-    config = config if (config is not None) else load_settings().sqlserver
+    config = config if config is not None else load_settings().sqlserver
 
     attributes = {
         "DRIVER": config.driver,
         "SERVER": f"{config.host},{config.port}",
-        "DATABASE": database if (database is not None) else config.database,
+        "DATABASE": database if database is not None else config.database,
         "UID": config.user,
         "PWD": config.password,
-        "Encrypt": "yes" if (config.encrypt) else "no",
-        "TrustServerCertificate": "yes" if (config.trust_server_certificate) else "no",
+        "Encrypt": "yes" if config.encrypt else "no",
+        "TrustServerCertificate": "yes" if config.trust_server_certificate else "no",
     }
 
     connection_string = ";".join(f"{key}={_odbc_value(value)}" for key, value in attributes.items())
 
-    ensure(
-        config.driver in pyodbc.drivers(), f"SQL Server ODBC driver is not installed: {config.driver}", ExtractionError
-    )
+    if config.driver not in pyodbc.drivers():
+        raise ExtractionError(f"SQL Server ODBC driver is not installed: {config.driver}")
 
     message = "SQL Server connection failed; check configuration and database readiness"
 

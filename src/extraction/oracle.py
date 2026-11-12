@@ -18,7 +18,7 @@ ORACLE_TABLES = {
 
 
 def connect_oracle(config: OracleConfig | None = None) -> oracledb.Connection:
-    config = config if (config is not None) else load_settings().oracle
+    config = config if config is not None else load_settings().oracle
     message = "Oracle connection failed; check configuration and database readiness"
 
     with error_context(message, (oracledb.Error,), ExtractionError):
@@ -28,14 +28,14 @@ def connect_oracle(config: OracleConfig | None = None) -> oracledb.Connection:
 
 
 def _number_handler(cursor: oracledb.Cursor, metadata: Any) -> Any:
-    if (metadata.type_code == oracledb.DB_TYPE_NUMBER and metadata.scale > 0):
+    if metadata.type_code == oracledb.DB_TYPE_NUMBER and metadata.scale > 0:
         return cursor.var(Decimal, arraysize=cursor.arraysize)
 
     return None
 
 
 def _materialize(value: Any) -> Any:
-    return value.read() if (isinstance(value, oracledb.LOB)) else value
+    return value.read() if isinstance(value, oracledb.LOB) else value
 
 
 def fetch_oracle(entity: str, config: OracleConfig | None = None) -> list[Record]:

@@ -23,8 +23,8 @@ MAPPERS: dict[str, Mapper] = {
 
 
 def run_pipeline(output_dir: Path | None = None, *, settings: Settings | None = None) -> Datasets:
-    settings = settings if (settings is not None) else load_settings()
-    destination = Path(output_dir) if (output_dir is not None) else settings.output_dir
+    settings = settings if settings is not None else load_settings()
+    destination = Path(output_dir) if output_dir is not None else settings.output_dir
     datasets: Datasets = {}
 
     for entity, mapper in MAPPERS.items():
@@ -66,5 +66,5 @@ def main() -> int:
     return run_cli(execute, LOGGER, "Pipeline failed")
 
 
-if (__name__ == "__main__"):
+if __name__ == "__main__":
     raise SystemExit(main())

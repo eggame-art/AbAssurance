@@ -2,6 +2,7 @@ from collections.abc import Mapping
 from dataclasses import asdict
 from typing import Any
 
+from mapping.fields import optional_text
 from mapping.identifiers import make_id
 from mapping.normalizers import normalize_amount, normalize_datetime, normalize_score
 from models.unified import Claim
@@ -45,8 +46,8 @@ def map_claim(record: Mapping[str, Any], source: str) -> dict[str, Any]:
             contract_id=make_id(source, contract_ref),
             incident_date=normalize_datetime(record.get(fields["date"])),
             estimated_amount=normalize_amount(record.get(fields["amount"])),
-            claim_status=record.get(fields["status"]),
-            description=record.get(fields["description"]),
+            claim_status=optional_text(record.get(fields["status"]), "claim_status"),
+            description=optional_text(record.get(fields["description"]), "description"),
             fraud_score=normalize_score(record.get(score_field)) if score_field else None,
         )
     )

@@ -2,6 +2,7 @@ from collections.abc import Mapping
 from dataclasses import asdict
 from typing import Any
 
+from mapping.fields import optional_integer, optional_text
 from mapping.identifiers import make_id
 from mapping.normalizers import normalize_date, normalize_datetime
 from models.unified import Customer
@@ -48,10 +49,12 @@ def map_customer(record: Mapping[str, Any], source: str) -> dict[str, Any]:
     source_id = record[fields["id"]]
 
     if fields["full_name"]:
-        full_name = record.get(fields["full_name"])
+        full_name = optional_text(record.get(fields["full_name"]), "full_name")
     else:
         first_name = record[fields["first_name"]]
         last_name = record[fields["last_name"]]
+        first_name = optional_text(first_name, "first_name") or ""
+        last_name = optional_text(last_name, "last_name") or ""
         full_name = f"{first_name} {last_name}".strip()
 
     tax_field = fields["tax_number"]
@@ -64,13 +67,13 @@ def map_customer(record: Mapping[str, Any], source: str) -> dict[str, Any]:
             source_id=str(source_id),
             full_name=full_name,
             birth_date=normalize_date(record.get(fields["birth_date"])),
-            email=record.get(fields["email"]),
-            phone_number=record.get(fields["phone"]),
-            address=record.get(fields["address"]),
-            postal_code=record.get(fields["postal_code"]),
-            tax_number=record.get(tax_field) if tax_field else None,
+            email=optional_text(record.get(fields["email"]), "email"),
+            phone_number=optional_text(record.get(fields["phone"]), "phone_number"),
+            address=optional_text(record.get(fields["address"]), "address"),
+            postal_code=optional_text(record.get(fields["postal_code"]), "postal_code"),
+            tax_number=optional_text(record.get(tax_field), "tax_number") if tax_field else None,
             created_at=normalize_datetime(record.get(fields["created_at"])),
-            customer_status=record.get(fields["status"]),
-            loyalty_score=record.get(loyalty_field) if loyalty_field else None,
+            customer_status=optional_text(record.get(fields["status"]), "customer_status"),
+            loyalty_score=optional_integer(record.get(loyalty_field), "loyalty_score") if loyalty_field else None,
         )
     )
