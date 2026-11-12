@@ -2,6 +2,7 @@ from collections.abc import Mapping
 from dataclasses import asdict
 from typing import Any
 
+from mapping.fields import optional_text
 from mapping.identifiers import make_id
 from mapping.normalizers import normalize_amount, normalize_datetime
 from models.unified import Payment
@@ -43,7 +44,7 @@ def map_payment(record: Mapping[str, Any], source: str) -> dict[str, Any]:
             contract_id=make_id(source, contract_ref),
             payment_date=normalize_datetime(record.get(fields["date"])),
             amount=normalize_amount(record.get(fields["amount"])),
-            payment_method=record.get(fields["method"]),
-            transaction_status=record.get(status_field) if status_field else None,
+            payment_method=optional_text(record.get(fields["method"]), "payment_method"),
+            transaction_status=optional_text(record.get(status_field), "transaction_status") if status_field else None,
         )
     )

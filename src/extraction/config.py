@@ -36,7 +36,7 @@ class Settings:
 
 
 def load_settings(env_file: Path | None = None) -> Settings:
-    path = env_file if (env_file is not None) else PROJECT_ROOT / ".env"
+    path = env_file if env_file is not None else PROJECT_ROOT / ".env"
     env = Environment.from_file(path)
 
     timeout = env.integer("DB_CONNECT_TIMEOUT", "10", 300)
@@ -48,7 +48,7 @@ def load_settings(env_file: Path | None = None) -> Settings:
 
     output_dir = Path(env.get("PIPELINE_OUTPUT_DIR", "data/processed")).expanduser()
 
-    if (not output_dir.is_absolute()):
+    if not output_dir.is_absolute():
         output_dir = PROJECT_ROOT / output_dir
 
     return Settings(
