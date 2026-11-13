@@ -19,7 +19,11 @@ class InitializationError(RuntimeError):
     pass
 
 
-APPLICATION_ERRORS = (ConfigurationError, ExtractionError, PipelineError, InitializationError, OSError)
+class MessagingError(RuntimeError):
+    pass
+
+
+APPLICATION_ERRORS = (ConfigurationError, ExtractionError, PipelineError, InitializationError, MessagingError, OSError)
 
 
 @contextmanager

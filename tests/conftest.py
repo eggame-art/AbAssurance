@@ -12,13 +12,23 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         default=False,
         help="Run integration tests against Oracle and SQL Server",
     )
+    parser.addoption(
+        "--run-kafka-integration",
+        action="store_true",
+        default=False,
+        help="Run Kafka integration tests against Docker databases and broker",
+    )
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list) -> None:
-    if (not config.getoption("--run-integration")):
+    if not config.getoption("--run-kafka-integration"):
+        for item in items:
+            if "kafka_integration" in item.keywords:
+                item.add_marker(pytest.mark.skip(reason="Pass --run-kafka-integration to use Docker Kafka"))
+    if not config.getoption("--run-integration"):
         skip = pytest.mark.skip(reason="Pass --run-integration to use Docker databases")
         for item in items:
-            if ("integration" in item.keywords):
+            if "integration" in item.keywords:
                 item.add_marker(skip)
 
 

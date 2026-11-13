@@ -9,6 +9,7 @@ dependencies = [
     "oracledb>=2.0",
     "pyodbc>=5.0",
     "python-dotenv>=1.0",
+    "confluent-kafka>=2.6,<3",
 ]
 
 [project.optional-dependencies]
@@ -16,6 +17,8 @@ dev = ["pytest>=8", "ruff>=0.9"]
 
 [project.scripts]
 abassurance-pipeline = "pipeline.run:main"
+abassurance-kafka-publish = "messaging.producer:main"
+abassurance-kafka-consume = "messaging.consumer:main"
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -27,7 +30,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
-markers = ["integration: tests en lecture seule sur les deux bases Docker"]
+markers = ["test"]
 
 [tool.ruff]
 line-length = 88
