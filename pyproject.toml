@@ -14,11 +14,13 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.9"]
+spark = ["pyspark==3.5.8"]
 
 [project.scripts]
 abassurance-pipeline = "pipeline.run:main"
 abassurance-kafka-publish = "messaging.producer:main"
 abassurance-kafka-consume = "messaging.consumer:main"
+abassurance-spark = "spark_pipeline.run:main"
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -30,7 +32,13 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
-markers = ["test"]
+markers = [
+    "test",
+    "integration: requires Oracle and SQL Server",
+    "kafka_integration: requires databases and Kafka",
+    "spark_integration: requires PySpark and Java",
+    "spark_kafka_integration: requires PySpark, Java, databases and Kafka",
+]
 
 [tool.ruff]
 line-length = 88

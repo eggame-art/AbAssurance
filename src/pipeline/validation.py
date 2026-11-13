@@ -12,17 +12,11 @@ RELATIONSHIPS = {
 
 def validate_record(record: Record, entity: str, identifiers: set[str], parents: dict[str, Record]) -> None:
     identifier = record[ID_FIELDS[entity]]
-    source_field = "source_reference" if entity == "contracts" else "source_id"
 
     if identifier in identifiers:
         raise PipelineError(f"Duplicate identifier in {entity}: {identifier}")
 
-    if identifier != make_id(record["source_system"], record[source_field]):
-        raise PipelineError(f"Inconsistent source identifier in {entity}")
-
-    if entity == "contracts" and record["start_date"] and record["end_date"]:
-        if record["start_date"] > record["end_date"]:
-            raise PipelineError("Contract end_date precedes start_date")
+    validate_record_fields(record, entity)
 
     if entity in RELATIONSHIPS:
         _, foreign_key = RELATIONSHIPS[entity]
@@ -32,6 +26,19 @@ def validate_record(record: Record, entity: str, identifiers: set[str], parents:
 
         if related["source_system"] != record["source_system"]:
             raise PipelineError(f"Cross-source {foreign_key} in {entity}")
+
+
+def validate_record_fields(record: Record, entity: str) -> None:
+    """Validate one mapped row independently of the storage/execution engine."""
+    identifier = record[ID_FIELDS[entity]]
+    source_field = "source_reference" if entity == "contracts" else "source_id"
+
+    if identifier != make_id(record["source_system"], record[source_field]):
+        raise PipelineError(f"Inconsistent source identifier in {entity}")
+
+    if entity == "contracts" and record["start_date"] and record["end_date"]:
+        if record["start_date"] > record["end_date"]:
+            raise PipelineError("Contract end_date precedes start_date")
 
 
 def validate_datasets(datasets: Datasets) -> None:
