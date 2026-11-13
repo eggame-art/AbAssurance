@@ -76,7 +76,7 @@ services:
       - .:/app
 
   kafka:
-    profiles: ["kafka"]
+    profiles: ["kafka", "spark"]
     image: apache/kafka:4.1.2
     environment:
       KAFKA_NODE_ID: "1"
@@ -130,7 +130,27 @@ services:
     volumes:
       - .:/app
 
+  spark:
+    profiles: ["spark"]
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
+    env_file: .env
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+      ORACLE_DSN: oracle:1521/${ORACLE_SERVICE:-FREEPDB1}
+      SQLSERVER_HOST: sqlserver
+      SQLSERVER_PORT: "1433"
+      SQLSERVER_TRUST_CERTIFICATE: ${SQLSERVER_TRUST_CERTIFICATE:-yes}
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - spark-ivy:/root/.ivy2
+
 volumes:
   oracle-data:
   sqlserver-data:
   kafka-data:
+  spark-ivy:

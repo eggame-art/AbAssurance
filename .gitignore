@@ -24,6 +24,7 @@ logs/
 
 data/raw/
 data/processed/
+data/spark/
 
 models/*.pkl
 models/*.joblib
