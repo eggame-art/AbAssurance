@@ -38,6 +38,7 @@ markers = [
     "kafka_integration: requires databases and Kafka",
     "spark_integration: requires PySpark and Java",
     "spark_kafka_integration: requires PySpark, Java, databases and Kafka",
+    "hdfs_integration: requires Spark and Docker HDFS",
 ]
 
 [tool.ruff]
