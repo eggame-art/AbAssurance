@@ -76,7 +76,7 @@ services:
       - .:/app
 
   kafka:
-    profiles: ["kafka", "spark"]
+    profiles: ["kafka", "spark", "hdfs"]
     image: apache/kafka:4.1.2
     environment:
       KAFKA_NODE_ID: "1"
@@ -130,13 +130,13 @@ services:
     volumes:
       - .:/app
 
-  spark:
+  spark: &spark-service
     profiles: ["spark"]
     build:
       context: .
       dockerfile: Dockerfile.spark
     env_file: .env
-    environment:
+    environment: &spark-environment
       KAFKA_BOOTSTRAP_SERVERS: kafka:19092
       ORACLE_DSN: oracle:1521/${ORACLE_SERVICE:-FREEPDB1}
       SQLSERVER_HOST: sqlserver
@@ -149,8 +149,83 @@ services:
       - .:/app
       - spark-ivy:/root/.ivy2
 
+  namenode:
+    profiles: ["hdfs"]
+    image: apache/hadoop:3.3.6
+    hostname: namenode
+    user: root
+    environment:
+      HADOOP_HOME: /opt/hadoop
+      HADOOP_CONF_DIR: /opt/hadoop/etc/hadoop
+    entrypoint: ["/bin/bash", "/hadoop-start.sh"]
+    command: ["namenode"]
+    ports:
+      - "127.0.0.1:${HDFS_NAMENODE_UI_PORT:-9870}:9870"
+    volumes:
+      - hdfs-namenode:/hadoop/dfs/name
+      - ./docker/hadoop/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
+      - ./docker/hadoop/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
+      - ./docker/hadoop/start.sh:/hadoop-start.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "hdfs dfs -ls / > /dev/null"]
+      interval: 10s
+      timeout: 10s
+      retries: 18
+      start_period: 30s
+    restart: unless-stopped
+
+  datanode:
+    profiles: ["hdfs"]
+    image: apache/hadoop:3.3.6
+    hostname: datanode
+    user: root
+    environment:
+      HADOOP_HOME: /opt/hadoop
+      HADOOP_CONF_DIR: /opt/hadoop/etc/hadoop
+    entrypoint: ["/bin/bash", "/hadoop-start.sh"]
+    command: ["datanode"]
+    depends_on:
+      namenode:
+        condition: service_healthy
+    volumes:
+      - hdfs-datanode:/hadoop/dfs/data
+      - ./docker/hadoop/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
+      - ./docker/hadoop/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
+      - ./docker/hadoop/start.sh:/hadoop-start.sh:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "hdfs dfsadmin -report -live | grep -q 'Live datanodes (1)' && hdfs dfsadmin -safemode get | grep -q 'OFF'"
+      interval: 10s
+      timeout: 10s
+      retries: 18
+      start_period: 30s
+    restart: unless-stopped
+
+  spark-hdfs:
+    <<: *spark-service
+    profiles: ["hdfs"]
+    environment:
+      <<: *spark-environment
+      SPARK_STATE_DIR: ${HDFS_STATE_DIR:-hdfs://namenode:9000/abassurance}
+      HADOOP_CONF_DIR: /opt/hadoop-conf
+    depends_on:
+      kafka:
+        condition: service_healthy
+      namenode:
+        condition: service_healthy
+      datanode:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - spark-ivy:/root/.ivy2
+      - ./docker/hadoop/spark-core-site.xml:/opt/hadoop-conf/core-site.xml:ro
+      - ./docker/hadoop/hdfs-site.xml:/opt/hadoop-conf/hdfs-site.xml:ro
+
 volumes:
   oracle-data:
   sqlserver-data:
   kafka-data:
   spark-ivy:
+  hdfs-namenode:
+  hdfs-datanode:

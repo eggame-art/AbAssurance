@@ -7,6 +7,9 @@ from extraction.config import OracleConfig, Settings, SQLServerConfig
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     parser.addoption(
+        "--run-hdfs-integration", action="store_true", default=False, help="Run Spark/HDFS integration tests"
+    )
+    parser.addoption(
         "--run-spark-integration", action="store_true", default=False, help="Run local Spark integration tests"
     )
     parser.addoption(
@@ -31,6 +34,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list) -> None:
     for marker, option in (
+        ("hdfs_integration", "--run-hdfs-integration"),
         ("spark_integration", "--run-spark-integration"),
         ("spark_kafka_integration", "--run-spark-kafka-integration"),
     ):

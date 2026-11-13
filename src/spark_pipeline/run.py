@@ -1,21 +1,25 @@
 import argparse
-import fcntl
 import json
 import logging
 import os
 import sys
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from messaging.config import KafkaConfig, load_kafka_config
 from shared.errors import ConfigurationError
 
+if (TYPE_CHECKING):
+    from pyspark.sql import DataFrame, SparkSession
+
 LOGGER = logging.getLogger(__name__)
 CONNECTOR = "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.8"
 
 
-def create_session(*, kafka: bool = True, master: str = "local[2]"):
+def create_session(*, kafka: bool = True, master: str = "local[2]") -> "SparkSession":
     from pyspark.sql import SparkSession
 
     os.environ.setdefault("PYSPARK_PYTHON", sys.executable)
@@ -26,6 +30,8 @@ def create_session(*, kafka: bool = True, master: str = "local[2]"):
         .master(master)
         .config("spark.sql.session.timeZone", "UTC")
         .config("spark.sql.shuffle.partitions", "4")
+        .config("spark.sql.maxPlanStringLength", "8192")
+        .config("spark.sql.ui.retainedExecutions", "20")
     )
 
     if kafka:
@@ -35,7 +41,7 @@ def create_session(*, kafka: bool = True, master: str = "local[2]"):
 
 
 @contextmanager
-def state_lock(state: Path):
+def state_lock(state: Path) -> Iterator[None]:
     state.mkdir(parents=True, exist_ok=True)
 
     with (state / ".lock").open("a+b") as handle:
@@ -51,6 +57,8 @@ def state_lock(state: Path):
 
                 msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
             else:
+                import fcntl
+
                 fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
 
         except OSError as exc:
@@ -93,7 +101,7 @@ def bind_state(state: Path, config: KafkaConfig) -> None:
         write_json_atomic(path, binding)
 
 
-def kafka_stream(spark, config: KafkaConfig, max_offsets: int):
+def kafka_stream(spark: "SparkSession", config: KafkaConfig, max_offsets: int) -> "DataFrame":
     if max_offsets < 1:
         raise ConfigurationError("max-offsets must be positive")
 
@@ -111,11 +119,11 @@ def kafka_stream(spark, config: KafkaConfig, max_offsets: int):
     )
 
 
-def ingest_available(stream, state: Path) -> None:
+def ingest_available(stream: "DataFrame", state: Path | str) -> None:
     query = (
         stream.writeStream.format("parquet")
-        .option("path", str(state / "raw"))
-        .option("checkpointLocation", str(state / "checkpoint"))
+        .option("path", f"{state}/raw")
+        .option("checkpointLocation", f"{state}/checkpoint")
         .outputMode("append")
         .trigger(availableNow=True)
         .start()
@@ -129,7 +137,7 @@ def ingest_available(stream, state: Path) -> None:
             query.stop()
 
 
-def materialize(spark, state: Path, prefix: str) -> dict:
+def materialize(spark: "SparkSession", state: Path, prefix: str) -> dict[str, Any]:
     from spark_pipeline.schemas import RAW_SCHEMA
     from spark_pipeline.transform import Snapshot
 
@@ -157,8 +165,25 @@ def materialize(spark, state: Path, prefix: str) -> dict:
         snapshot.close()
 
 
-def run_available(spark, config: KafkaConfig, state: Path, *, max_offsets: int = 10000) -> dict:
-    state = state.resolve()
+def run_available(
+    spark: "SparkSession", config: KafkaConfig, state: Path | str, *, max_offsets: int = 10000
+) -> dict[str, Any]:
+    if (isinstance(state, str) and state.startswith("hdfs:")):
+        from spark_pipeline.hdfs import HdfsState, materialize_hdfs
+
+        storage = HdfsState(spark, state)
+
+        with storage.lock():
+            storage.bind(config)
+
+            ingest_available(kafka_stream(spark, config, max_offsets), storage.root)
+
+            return materialize_hdfs(spark, storage, config.topic_prefix)
+
+    if (isinstance(state, str) and "://" in state):
+        raise ConfigurationError("Unsupported state URI; use a local directory or hdfs:// URI")
+
+    state = Path(state).resolve()
 
     with state_lock(state):
         bind_state(state, config)
@@ -172,7 +197,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--env-file", type=Path)
-    parser.add_argument("--state-dir", type=Path, default=Path("data/spark"))
+    parser.add_argument("--state-dir", default=os.environ.get("SPARK_STATE_DIR", "data/spark"))
     parser.add_argument("--max-offsets", type=int, default=10000)
     parser.add_argument("--master", default="local[2]")
 
