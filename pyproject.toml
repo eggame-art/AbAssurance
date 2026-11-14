@@ -21,6 +21,9 @@ abassurance-pipeline = "pipeline.run:main"
 abassurance-kafka-publish = "messaging.producer:main"
 abassurance-kafka-consume = "messaging.consumer:main"
 abassurance-spark = "spark_pipeline.run:main"
+abassurance-prepare-dataset = "dataset_preparation.run:main"
+abassurance-history-import = "dataset_preparation.history:main"
+abassurance-history-demo = "dataset_preparation.demo:main"
 
 [build-system]
 requires = ["setuptools>=68"]

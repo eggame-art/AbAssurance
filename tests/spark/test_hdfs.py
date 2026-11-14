@@ -61,7 +61,7 @@ def test_hdfs_connection_atomic_manifest_and_exclusive_lock(spark: Any, hdfs_sta
         state.write_json_atomic("probe.json", {"value": "first"})
         state.write_json_atomic("probe.json", {"value": "second"})
 
-        assert state.read_json("probe.json") == {"value": "seconde"}
+        assert state.read_json("probe.json") == {"value": "second"}
 
         with pytest.raises(ConfigurationError, match="already in use"), HdfsState(spark, state.root).lock():
             pytest.fail("Concurrent HDFS writer acquired the lock")
