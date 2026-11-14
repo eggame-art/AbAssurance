@@ -222,6 +222,24 @@ services:
       - ./docker/hadoop/spark-core-site.xml:/opt/hadoop-conf/core-site.xml:ro
       - ./docker/hadoop/hdfs-site.xml:/opt/hadoop-conf/hdfs-site.xml:ro
 
+  prepare-dataset:
+    <<: *spark-service
+    profiles: ["hdfs"]
+    command: ["python", "-m", "dataset_preparation.run"]
+    environment:
+      SPARK_STATE_DIR: ${HDFS_STATE_DIR:-hdfs://namenode:9000/abassurance}
+      DATASET_OUTPUT_DIR: ${DATASET_OUTPUT_DIR:-hdfs://namenode:9000/abassurance-datasets/churn}
+      HADOOP_CONF_DIR: /opt/hadoop-conf
+    depends_on:
+      namenode:
+        condition: service_healthy
+      datanode:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - ./docker/hadoop/spark-core-site.xml:/opt/hadoop-conf/core-site.xml:ro
+      - ./docker/hadoop/hdfs-site.xml:/opt/hadoop-conf/hdfs-site.xml:ro
+
 volumes:
   oracle-data:
   sqlserver-data:
