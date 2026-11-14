@@ -240,6 +240,24 @@ services:
       - ./docker/hadoop/spark-core-site.xml:/opt/hadoop-conf/core-site.xml:ro
       - ./docker/hadoop/hdfs-site.xml:/opt/hadoop-conf/hdfs-site.xml:ro
 
+  train-model:
+    <<: *spark-service
+    profiles: ["hdfs"]
+    command: ["python", "-m", "model_training.run"]
+    environment:
+      DATASET_OUTPUT_DIR: ${DATASET_OUTPUT_DIR:-hdfs://namenode:9000/abassurance-datasets/churn}
+      MODEL_OUTPUT_DIR: ${MODEL_OUTPUT_DIR:-hdfs://namenode:9000/abassurance-models/churn}
+      HADOOP_CONF_DIR: /opt/hadoop-conf
+    depends_on:
+      namenode:
+        condition: service_healthy
+      datanode:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - ./docker/hadoop/spark-core-site.xml:/opt/hadoop-conf/core-site.xml:ro
+      - ./docker/hadoop/hdfs-site.xml:/opt/hadoop-conf/hdfs-site.xml:ro
+
 volumes:
   oracle-data:
   sqlserver-data:

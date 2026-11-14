@@ -214,10 +214,18 @@ def load_history(spark: SparkSession, state: HdfsState) -> tuple[dict, dict[str,
 
 
 def publish_history(
-    spark: SparkSession, root: str, incoming: dict[str, DataFrame], *, is_synthetic: bool, as_of_date: str
+    spark: SparkSession,
+    root: str,
+    incoming: dict[str, DataFrame],
+    *,
+    is_synthetic: bool,
+    as_of_date: str,
+    generation: dict | None = None,
 ) -> dict:
     state = HdfsState(spark, root)
     require_namespace(state.root, is_synthetic)
+    if generation is not None and not is_synthetic:
+        raise ConfigurationError("Synthetic generation metadata cannot certify business history")
 
     if spark.conf.get("spark.sql.session.timeZone") != "UTC":
         raise ConfigurationError("Business history requires UTC")
@@ -231,6 +239,8 @@ def publish_history(
 
             if previous["is_synthetic"] != is_synthetic or as_of_date < previous["as_of_date"]:
                 raise ConfigurationError("History provenance cannot change or observation completeness go backwards")
+            if previous.get("generation") != generation:
+                raise ConfigurationError("Synthetic generator configuration changed: use a separate history root")
 
             frames = {entity: old[entity].unionByName(incoming[entity]).dropDuplicates() for entity in HISTORY_MODELS}
 
@@ -253,6 +263,7 @@ def publish_history(
             "is_synthetic": is_synthetic,
             "counts": counts,
             "previous_snapshot": previous["snapshot"] if previous else None,
+            **({"generation": generation} if generation is not None else {}),
         }
 
         state.write_json_atomic(f"{folder}/report.json", manifest)

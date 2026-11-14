@@ -14,7 +14,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.9"]
-spark = ["pyspark==3.5.8"]
+spark = ["pyspark==3.5.8", "numpy>=1.24,<3"]
 
 [project.scripts]
 abassurance-pipeline = "pipeline.run:main"
@@ -24,6 +24,7 @@ abassurance-spark = "spark_pipeline.run:main"
 abassurance-prepare-dataset = "dataset_preparation.run:main"
 abassurance-history-import = "dataset_preparation.history:main"
 abassurance-history-demo = "dataset_preparation.demo:main"
+abassurance-train-model = "model_training.run:main"
 
 [build-system]
 requires = ["setuptools>=68"]

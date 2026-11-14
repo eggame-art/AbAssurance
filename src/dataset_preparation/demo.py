@@ -194,10 +194,12 @@ def synthetic_records(contracts_per_source: int = 52, *, temporal_cohorts: bool 
 def demo_frames(spark, contracts_per_source: int = 52, *, temporal_cohorts: bool = False):
     from dataset_preparation.history import history_schema
 
-    return {
-        entity: spark.createDataFrame(rows, history_schema(entity))
-        for entity, rows in synthetic_records(contracts_per_source, temporal_cohorts=temporal_cohorts).items()
-    }
+    frames = {}
+    for entity, rows in synthetic_records(contracts_per_source, temporal_cohorts=temporal_cohorts).items():
+        schema = history_schema(entity)
+        data = [tuple(row.get(field.name) for field in schema) for row in rows]
+        frames[entity] = spark.createDataFrame(data, schema)
+    return frames
 
 
 def main() -> int:
@@ -208,8 +210,13 @@ def main() -> int:
     parser.add_argument(
         "--temporal-cohorts", action="store_true", help="Add an independent later cohort for evaluation"
     )
+    parser.add_argument("--profile", choices=("temporal-edge-cases", "predictive"), default="temporal-edge-cases")
+    parser.add_argument("--seed", type=int, default=42, help="Seed for the predictive profile only")
 
     args = parser.parse_args()
+
+    if args.profile == "predictive" and not args.temporal_cohorts:
+        parser.error("The predictive profile requires --temporal-cohorts")
 
     from dataset_preparation.history import publish_history
     from spark_pipeline.run import create_session
@@ -217,17 +224,36 @@ def main() -> int:
     spark = create_session(kafka=False)
 
     try:
-        result = publish_history(
-            spark,
-            args.history_dir
-            or (
+        generation = None
+        if args.profile == "predictive":
+            from dataset_preparation.history import history_schema
+            from dataset_preparation.predictive import generation_recipe, predictive_records
+
+            frames = {}
+            for entity, rows in predictive_records(args.contracts_per_source, seed=args.seed).items():
+                schema = history_schema(entity)
+                data = [tuple(row.get(field.name) for field in schema) for row in rows]
+                frames[entity] = spark.createDataFrame(data, schema)
+            generation = generation_recipe(args.contracts_per_source, args.seed)
+
+            default_root = (
+                f"hdfs://namenode:9000/abassurance-synthetic/"
+                f"history-predictive-v1-seed{args.seed}-n{args.contracts_per_source}"
+            )
+        else:
+            frames = demo_frames(spark, args.contracts_per_source, temporal_cohorts=args.temporal_cohorts)
+            default_root = (
                 "hdfs://namenode:9000/abassurance-synthetic/history-temporal"
                 if args.temporal_cohorts
                 else "hdfs://namenode:9000/abassurance-synthetic/history"
-            ),
-            demo_frames(spark, args.contracts_per_source, temporal_cohorts=args.temporal_cohorts),
+            )
+        result = publish_history(
+            spark,
+            args.history_dir or default_root,
+            frames,
             is_synthetic=True,
             as_of_date=TEMPORAL_AS_OF_DATE if args.temporal_cohorts else DEMO_AS_OF_DATE,
+            generation=generation,
         )
 
         print(json.dumps(result, indent=2))
