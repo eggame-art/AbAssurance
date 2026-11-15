@@ -150,7 +150,7 @@ services:
       - spark-ivy:/root/.ivy2
 
   namenode:
-    profiles: ["hdfs"]
+    profiles: ["hdfs", "api"]
     image: apache/hadoop:3.3.6
     hostname: namenode
     user: root
@@ -175,7 +175,7 @@ services:
     restart: unless-stopped
 
   datanode:
-    profiles: ["hdfs"]
+    profiles: ["hdfs", "api"]
     image: apache/hadoop:3.3.6
     hostname: datanode
     user: root
@@ -257,6 +257,36 @@ services:
       - .:/app
       - ./docker/hadoop/spark-core-site.xml:/opt/hadoop-conf/core-site.xml:ro
       - ./docker/hadoop/hdfs-site.xml:/opt/hadoop-conf/hdfs-site.xml:ro
+
+  prediction-api:
+    <<: *spark-service
+    profiles: ["api"]
+    command: ["python", "-m", "uvicorn", "prediction_api.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+    environment:
+      MODEL_OUTPUT_DIR: ${MODEL_OUTPUT_DIR:-hdfs://namenode:9000/abassurance-models/churn}
+      API_MODEL_ID: ${API_MODEL_ID:-}
+      API_ALLOW_EXPERIMENTAL: ${API_ALLOW_EXPERIMENTAL:-false}
+      API_SPARK_MASTER: ${API_SPARK_MASTER:-local[2]}
+      HADOOP_CONF_DIR: /opt/hadoop-conf
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    depends_on:
+      namenode:
+        condition: service_healthy
+      datanode:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - ./docker/hadoop/spark-core-site.xml:/opt/hadoop-conf/core-site.xml:ro
+      - ./docker/hadoop/hdfs-site.xml:/opt/hadoop-conf/hdfs-site.xml:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    stop_grace_period: 60s
+    restart: unless-stopped
 
 volumes:
   oracle-data:
