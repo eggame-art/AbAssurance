@@ -15,7 +15,7 @@ RUN apt-get update \
 WORKDIR /app
 COPY pyproject.toml ./
 COPY src ./src
-RUN python -m pip install --no-cache-dir -e ".[dev,spark]"
+RUN python -m pip install --no-cache-dir -e ".[dev,spark,api]"
 
 ENV PYSPARK_PYTHON=python3 SPARK_LOCAL_IP=127.0.0.1
 CMD ["python", "-m", "spark_pipeline.run"]
