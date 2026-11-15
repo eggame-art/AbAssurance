@@ -6,4 +6,4 @@ workspace:
 # Point to additional files outside the `postman/` folder to register them individually. Example:
 #localResources:
 #  collections:
-#    - ../tests/E2E Test Collection/
+#    - ../server/tests/E2E Test Collection/

@@ -12,7 +12,7 @@ services:
       - "127.0.0.1:${ORACLE_PORT:-1521}:1521"
     volumes:
       - oracle-data:/opt/oracle/oradata
-      - ./database/oracle/init:/container-entrypoint-initdb.d:ro
+      - ./Infrastructure/database/oracle/init:/container-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "healthcheck.sh"]
       interval: 10s
@@ -51,13 +51,13 @@ services:
     environment:
       SQLCMDPASSWORD: ${MSSQL_SA_PASSWORD:?Required}
     volumes:
-      - ./database/sqlserver/init:/init:ro
+      - ./Infrastructure/database/sqlserver/init:/init:ro
     entrypoint: ["/bin/bash", "/init/init.sh"]
     restart: "no"
 
   pipeline:
     profiles: ["tools"]
-    build: .
+    build: {context: ., dockerfile: server/Dockerfile}
     env_file: .env
     environment:
       ORACLE_DSN: oracle:1521/${ORACLE_SERVICE:-FREEPDB1}
@@ -110,7 +110,7 @@ services:
     extends:
       service: pipeline
     profiles: ["kafka"]
-    command: ["python", "-m", "messaging.producer"]
+    command: ["python", "-m", "abassurance.systems.messaging.producer"]
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:19092
     depends_on:
@@ -119,9 +119,9 @@ services:
 
   kafka-consume:
     profiles: ["kafka"]
-    build: .
+    build: {context: ., dockerfile: server/Dockerfile}
     env_file: .env
-    command: ["python", "-m", "messaging.consumer"]
+    command: ["python", "-m", "abassurance.systems.messaging.consumer"]
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:19092
     depends_on:
@@ -134,7 +134,7 @@ services:
     profiles: ["spark"]
     build:
       context: .
-      dockerfile: Dockerfile.spark
+      dockerfile: server/Dockerfile.spark
     env_file: .env
     environment: &spark-environment
       KAFKA_BOOTSTRAP_SERVERS: kafka:19092
@@ -163,9 +163,9 @@ services:
       - "127.0.0.1:${HDFS_NAMENODE_UI_PORT:-9870}:9870"
     volumes:
       - hdfs-namenode:/hadoop/dfs/name
-      - ./docker/hadoop/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
-      - ./docker/hadoop/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
-      - ./docker/hadoop/start.sh:/hadoop-start.sh:ro
+      - ./Infrastructure/hadoop/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
+      - ./Infrastructure/hadoop/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
+      - ./Infrastructure/hadoop/start.sh:/hadoop-start.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "hdfs dfs -ls / > /dev/null"]
       interval: 10s
@@ -189,9 +189,9 @@ services:
         condition: service_healthy
     volumes:
       - hdfs-datanode:/hadoop/dfs/data
-      - ./docker/hadoop/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
-      - ./docker/hadoop/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
-      - ./docker/hadoop/start.sh:/hadoop-start.sh:ro
+      - ./Infrastructure/hadoop/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
+      - ./Infrastructure/hadoop/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
+      - ./Infrastructure/hadoop/start.sh:/hadoop-start.sh:ro
     healthcheck:
       test:
         - CMD-SHELL
@@ -219,13 +219,13 @@ services:
     volumes:
       - .:/app
       - spark-ivy:/root/.ivy2
-      - ./docker/hadoop/spark-core-site.xml:/opt/hadoop-conf/core-site.xml:ro
-      - ./docker/hadoop/hdfs-site.xml:/opt/hadoop-conf/hdfs-site.xml:ro
+      - ./Infrastructure/hadoop/spark-core-site.xml:/opt/hadoop-conf/core-site.xml:ro
+      - ./Infrastructure/hadoop/hdfs-site.xml:/opt/hadoop-conf/hdfs-site.xml:ro
 
   prepare-dataset:
     <<: *spark-service
     profiles: ["hdfs"]
-    command: ["python", "-m", "dataset_preparation.run"]
+    command: ["python", "-m", "abassurance.systems.data_preparation.run"]
     environment:
       SPARK_STATE_DIR: ${HDFS_STATE_DIR:-hdfs://namenode:9000/abassurance}
       DATASET_OUTPUT_DIR: ${DATASET_OUTPUT_DIR:-hdfs://namenode:9000/abassurance-datasets/churn}
@@ -237,13 +237,13 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
-      - ./docker/hadoop/spark-core-site.xml:/opt/hadoop-conf/core-site.xml:ro
-      - ./docker/hadoop/hdfs-site.xml:/opt/hadoop-conf/hdfs-site.xml:ro
+      - ./Infrastructure/hadoop/spark-core-site.xml:/opt/hadoop-conf/core-site.xml:ro
+      - ./Infrastructure/hadoop/hdfs-site.xml:/opt/hadoop-conf/hdfs-site.xml:ro
 
   train-model:
     <<: *spark-service
     profiles: ["hdfs"]
-    command: ["python", "-m", "model_training.run"]
+    command: ["python", "-m", "abassurance.systems.model_training.run"]
     environment:
       DATASET_OUTPUT_DIR: ${DATASET_OUTPUT_DIR:-hdfs://namenode:9000/abassurance-datasets/churn}
       MODEL_OUTPUT_DIR: ${MODEL_OUTPUT_DIR:-hdfs://namenode:9000/abassurance-models/churn}
@@ -255,13 +255,13 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
-      - ./docker/hadoop/spark-core-site.xml:/opt/hadoop-conf/core-site.xml:ro
-      - ./docker/hadoop/hdfs-site.xml:/opt/hadoop-conf/hdfs-site.xml:ro
+      - ./Infrastructure/hadoop/spark-core-site.xml:/opt/hadoop-conf/core-site.xml:ro
+      - ./Infrastructure/hadoop/hdfs-site.xml:/opt/hadoop-conf/hdfs-site.xml:ro
 
   prediction-api:
     <<: *spark-service
     profiles: ["api"]
-    command: ["python", "-m", "uvicorn", "prediction_api.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+    command: ["python", "-m", "uvicorn", "abassurance.systems.prediction_api.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
     environment:
       MODEL_OUTPUT_DIR: ${MODEL_OUTPUT_DIR:-hdfs://namenode:9000/abassurance-models/churn}
       API_MODEL_ID: ${API_MODEL_ID:-}
@@ -277,8 +277,8 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
-      - ./docker/hadoop/spark-core-site.xml:/opt/hadoop-conf/core-site.xml:ro
-      - ./docker/hadoop/hdfs-site.xml:/opt/hadoop-conf/hdfs-site.xml:ro
+      - ./Infrastructure/hadoop/spark-core-site.xml:/opt/hadoop-conf/core-site.xml:ro
+      - ./Infrastructure/hadoop/hdfs-site.xml:/opt/hadoop-conf/hdfs-site.xml:ro
     healthcheck:
       test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health', timeout=5)"]
       interval: 15s
