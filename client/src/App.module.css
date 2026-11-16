@@ -1,0 +1,31 @@
+:global(:root) {
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+  color: #202020;
+  background: #fff;
+}
+
+:global(*) {
+  box-sizing: border-box;
+}
+
+:global(body) {
+  margin: 0;
+}
+
+.container {
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.header {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #ccc;
+}
+
+.name {
+  margin-top: 0;
+  font-weight: 700;
+}

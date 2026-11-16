@@ -332,3 +332,19 @@ def test_loader_rejects_experimental_business_validation(mocked_loader, report):
 
     with pytest.raises(ConfigurationError, match="validation limits"):
         load_service(APIConfig(allow_experimental=True))
+
+
+@pytest.mark.parametrize("fail", [False, True])
+def test_injected_spark_is_never_stopped_by_model_service(mocked_loader, fail):
+    runtime, create, load = mocked_loader
+    if fail:
+        load.side_effect = ConfigurationError("Model unavailable")
+        with pytest.raises(ConfigurationError):
+            load_service(APIConfig(), spark=runtime.spark)
+    else:
+        service = load_service(APIConfig(), spark=runtime.spark)
+        service.close()
+        service.close()
+        assert not service.available
+    create.assert_not_called()
+    runtime.spark.stop.assert_not_called()

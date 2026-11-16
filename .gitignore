@@ -31,3 +31,8 @@ models/*.joblib
 
 .DS_Store
 Thumbs.db
+
+node_modules/
+.npm-cache/
+client/dist/
+.tools/

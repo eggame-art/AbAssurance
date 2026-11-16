@@ -34,7 +34,7 @@ def _number_handler(cursor: oracledb.Cursor, metadata: Any) -> Any:
     return None
 
 
-def _materialize(value: Any) -> Any:
+def materialize_value(value: Any) -> Any:
     return value.read() if isinstance(value, oracledb.LOB) else value
 
 
@@ -44,6 +44,6 @@ def fetch_oracle(entity: str, config: OracleConfig | None = None) -> list[Record
             entity,
             ORACLE_TABLES,
             partial(connect_oracle, config),
-            convert=_materialize,
+            convert=materialize_value,
             output_type_handler=_number_handler,
         )

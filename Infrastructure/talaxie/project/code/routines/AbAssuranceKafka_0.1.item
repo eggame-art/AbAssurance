@@ -1,0 +1,162 @@
+package routines;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.ZoneOffset;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Properties;
+import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+
+public class AbAssuranceKafka implements AutoCloseable {
+    private final KafkaProducer<String, String> producer;
+    private final Gson json = new GsonBuilder().serializeNulls().disableHtmlEscaping().create();
+    private final String prefix;
+    private final int timeout;
+    private final Map<String, Long> counts = new LinkedHashMap<String, Long>();
+
+    public AbAssuranceKafka() {
+        prefix = env("KAFKA_TOPIC_PREFIX", "insurance");
+        if (!prefix.matches("[a-zA-Z0-9_-][a-zA-Z0-9._-]*") || prefix.length() > 225) {
+            throw new IllegalArgumentException("Invalid KAFKA_TOPIC_PREFIX");
+        }
+        timeout = timeout("KAFKA_TIMEOUT", 30);
+        Properties properties = new Properties();
+        properties.setProperty("bootstrap.servers", env("KAFKA_BOOTSTRAP_SERVERS", "kafka:19092"));
+        properties.setProperty("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        properties.setProperty("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        properties.setProperty("acks", "all");
+        properties.setProperty("enable.idempotence", "true");
+        properties.setProperty("linger.ms", "0");
+        properties.setProperty("request.timeout.ms", String.valueOf(Math.min(timeout * 1000, 10000)));
+        properties.setProperty("delivery.timeout.ms", String.valueOf(timeout * 1000));
+        properties.setProperty("max.block.ms", String.valueOf(timeout * 1000));
+        producer = new KafkaProducer<String, String>(properties);
+    }
+
+    public void publish(String source, String entity, String primaryKey, Map<String, Object> row) throws Exception {
+        String expectedKey = primaryKey(source, entity);
+        if (!expectedKey.equals(primaryKey) || row.get(primaryKey) == null) {
+            throw new IllegalArgumentException("Missing or invalid source identifier");
+        }
+        Map<String, Object> data = new LinkedHashMap<String, Object>();
+        for (Map.Entry<String, Object> entry : row.entrySet()) {
+            Object value = entry.getValue();
+            if ("AP_PAYMENT_REF".equals(entry.getKey()) && value != null) {
+                UUID.fromString(value.toString());
+            }
+            data.put(entry.getKey(), jsonValue(value));
+        }
+        Map<String, Object> envelope = new LinkedHashMap<String, Object>();
+        envelope.put("source_system", source);
+        envelope.put("entity", entity);
+        envelope.put("data", data);
+        String route = source + ":" + entity;
+        String key = route + ":" + data.get(primaryKey);
+        ProducerRecord<String, String> record = new ProducerRecord<String, String>(
+            prefix + "." + source + "." + entity, key, json.toJson(envelope)
+        );
+        try {
+            producer.send(record).get(timeout + 5L, TimeUnit.SECONDS);
+        } catch (InterruptedException error) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Kafka publication interrupted; delivery may be partial", error);
+        } catch (Exception error) {
+            throw new IllegalStateException("Kafka delivery failed for " + route + "; delivery may be partial", error);
+        }
+        counts.put(route, counts.containsKey(route) ? counts.get(route) + 1L : 1L);
+    }
+
+    public void completed(Map<String, Long> extracted) {
+        if (extracted.size() != 8) {
+            throw new IllegalStateException("All eight source flows must be executed");
+        }
+        for (Map.Entry<String, Long> entry : extracted.entrySet()) {
+            long published = counts.containsKey(entry.getKey()) ? counts.get(entry.getKey()) : 0L;
+            if (published != entry.getValue()) {
+                throw new IllegalStateException("Extracted and acknowledged counts differ for " + entry.getKey());
+            }
+        }
+        System.out.println("TALAXIE status=succeeded published=" + json.toJson(counts));
+    }
+
+    @Override
+    public void close() {
+        producer.close(Duration.ofSeconds(timeout));
+    }
+
+    public static String env(String name, String fallback) {
+        String value = System.getenv(name);
+        return value == null || value.isEmpty() ? fallback : value;
+    }
+
+    public static String required(String name, String fallbackName) {
+        String value = env(name, fallbackName == null ? "" : env(fallbackName, ""));
+        if (value.isEmpty()) {
+            throw new IllegalArgumentException("Missing environment variable: " + name);
+        }
+        return value;
+    }
+
+    public static int timeout(String name, int fallback) {
+        int value = Integer.parseInt(env(name, String.valueOf(fallback)));
+        if (value < 1 || value > 300) {
+            throw new IllegalArgumentException(name + " must be between 1 and 300");
+        }
+        return value;
+    }
+
+    public static String jdbcBoolean(String name, String fallback) {
+        String value = env(name, fallback).toLowerCase(java.util.Locale.ROOT);
+        if ("yes".equals(value) || "true".equals(value) || "1".equals(value)) {
+            return "true";
+        }
+        if ("no".equals(value) || "false".equals(value) || "0".equals(value)) {
+            return "false";
+        }
+        throw new IllegalArgumentException("Invalid boolean setting: " + name);
+    }
+
+    public static String primaryKey(String source, String entity) {
+        String[] entities = {"customers", "contracts", "claims", "payments"};
+        String[] keys;
+        if ("abassurance".equals(source)) {
+            keys = new String[] {"AB_CLIENT_ID", "AB_POLICY_NUMBER", "AB_CLAIM_ID", "AB_PAYMENT_ID"};
+        } else if ("assureplus".equals(source)) {
+            keys = new String[] {"AP_USER_ID", "AP_CONTRACT_REF", "AP_SINISTRE_NUM", "AP_PAYMENT_REF"};
+        } else {
+            throw new IllegalArgumentException("Unknown source_system");
+        }
+        for (int index = 0; index < entities.length; index++) {
+            if (entities[index].equals(entity)) {
+                return keys[index];
+            }
+        }
+        throw new IllegalArgumentException("Unknown entity");
+    }
+
+    public static Object jsonValue(Object value) {
+        if (value instanceof BigDecimal) {
+            return ((BigDecimal) value).toPlainString();
+        }
+        if (value instanceof java.sql.Timestamp) {
+            return ((java.sql.Timestamp) value).toLocalDateTime().toString();
+        }
+        if (value instanceof java.sql.Date) {
+            return ((java.sql.Date) value).toLocalDate().toString();
+        }
+        if (value instanceof java.util.Date) {
+            return java.time.Instant.ofEpochMilli(((java.util.Date) value).getTime())
+                .atOffset(ZoneOffset.UTC).toLocalDateTime().toString();
+        }
+        if (value == null || value instanceof String || value instanceof Integer || value instanceof Long) {
+            return value;
+        }
+        throw new IllegalArgumentException("Unsupported source type: " + value.getClass().getName());
+    }
+}

@@ -11,3 +11,7 @@ __pycache__
 htmlcov
 data
 Infrastructure/database
+.tools
+**/node_modules
+**/.npm-cache
+client/dist

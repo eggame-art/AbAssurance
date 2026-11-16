@@ -1,0 +1,10 @@
+FROM abassurance-talaxie:9.0.2 AS etl
+FROM abassurance-prediction-api:latest
+
+COPY --from=etl /opt/job /opt/job
+COPY --from=etl /opt/java/openjdk /opt/talaxie-java
+COPY server/src /app/server/src
+
+ENV PYTHONPATH=/app/server/src
+ENV TALAXIE_JAVA=/opt/talaxie-java/bin/java
+ENV TALAXIE_JOB_DIR=/opt/job

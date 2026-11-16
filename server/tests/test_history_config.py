@@ -46,5 +46,5 @@ def test_demo_is_deterministic_synthetic_and_separate_from_existing_contracts():
     assert len(SCENARIOS) == 13
 
     assert all(row["is_synthetic"] for rows in records.values() for row in rows)
-    assert all("SYNTH-" in row["contract_id"] for row in records["contracts"])
+    assert all("SYNTH-" in row["source_reference"] for row in records["contracts"])
     assert len({row["contract_id"] for row in records["contracts"]}) == 104

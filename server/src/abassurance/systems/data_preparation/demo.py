@@ -1,4 +1,4 @@
-import argparse
+﻿import argparse
 import json
 import re
 from datetime import date, datetime, timedelta
@@ -40,14 +40,14 @@ def synthetic_records(contracts_per_source: int = 52, *, temporal_cohorts: bool 
         for index in range(contracts_per_source):
             reference = f"SYNTH-C{index:05d}"
             customer_ref = f"SYNTH-U{index // 2:05d}"
-            contract_id = make_id(source, reference)
+            contract_id = make_id(source, reference, "contracts")
             scenario = index % len(SCENARIOS)
 
             if index % 2 == 0:
                 records["customers"].append(
                     {
                         **common,
-                        "customer_id": make_id(source, customer_ref),
+                        "customer_id": make_id(source, customer_ref, "customers"),
                         "source_id": customer_ref,
                         "available_at": "2024-12-01T00:00:00Z",
                     }
@@ -58,7 +58,7 @@ def synthetic_records(contracts_per_source: int = 52, *, temporal_cohorts: bool 
                     **common,
                     "contract_id": contract_id,
                     "source_reference": reference,
-                    "customer_id": make_id(source, customer_ref),
+                    "customer_id": make_id(source, customer_ref, "customers"),
                     "start_date": "2025-01-01",
                     "coverage_end_date": "2025-06-30" if scenario == 9 else None,
                     "available_at": "2025-07-02T00:00:00Z" if scenario == 11 else "2024-12-15T00:00:00Z",
@@ -74,7 +74,7 @@ def synthetic_records(contracts_per_source: int = 52, *, temporal_cohorts: bool 
 
                 claim = {
                     **common,
-                    "claim_id": make_id(source, claim_ref),
+                    "claim_id": make_id(source, claim_ref, "claims"),
                     "source_id": claim_ref,
                     "contract_id": contract_id,
                     "incident_date": business_date,
@@ -92,7 +92,7 @@ def synthetic_records(contracts_per_source: int = 52, *, temporal_cohorts: bool 
 
             payment = {
                 **common,
-                "payment_id": make_id(source, payment_ref),
+                "payment_id": make_id(source, payment_ref, "payments"),
                 "source_id": payment_ref,
                 "contract_id": contract_id,
                 "payment_date": "2025-01-15",
@@ -142,7 +142,7 @@ def synthetic_records(contracts_per_source: int = 52, *, temporal_cohorts: bool 
 
                 cancellation = {
                     **common,
-                    "cancellation_id": make_id(source, cancellation_ref),
+                    "cancellation_id": make_id(source, cancellation_ref, "cancellations"),
                     "source_id": cancellation_ref,
                     "contract_id": contract_id,
                     "cancellation_date": effective,
@@ -173,6 +173,23 @@ def synthetic_records(contracts_per_source: int = 52, *, temporal_cohorts: bool 
             entity: [{key: shift(value) for key, value in row.items()} for row in rows]
             for entity, rows in records.items()
         }
+
+        identities = {}
+        for entity, identifier in (
+            ("customers", "customer_id"),
+            ("contracts", "contract_id"),
+            ("claims", "claim_id"),
+            ("payments", "payment_id"),
+            ("cancellations", "cancellation_id"),
+        ):
+            for old, new in zip(records[entity], later[entity], strict=True):
+                reference = new["source_reference" if entity == "contracts" else "source_id"]
+                identities[old[identifier]] = make_id(new["source_system"], reference, entity)
+        for rows in later.values():
+            for row in rows:
+                for field in ("customer_id", "contract_id", "claim_id", "payment_id", "cancellation_id"):
+                    if field in row:
+                        row[field] = identities[row[field]]
 
         for contract in list(records["contracts"]):
             if contract["coverage_end_date"] is None:
@@ -265,3 +282,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

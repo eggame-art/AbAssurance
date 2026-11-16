@@ -1,0 +1,27 @@
+.form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.form label {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.form button {
+  align-self: end;
+  justify-self: start;
+}
+
+.result {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1rem;
+}
+
+.result dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}

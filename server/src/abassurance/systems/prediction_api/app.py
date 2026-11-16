@@ -6,6 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
+from abassurance.systems.monitoring.routes import router as monitoring_router
 from abassurance.systems.prediction_api.config import APIConfig
 from abassurance.systems.prediction_api.loader import load_service
 from abassurance.systems.prediction_api.routes import router
@@ -32,4 +33,6 @@ def create_app(config: APIConfig | None = None) -> FastAPI:
         )
 
     app.include_router(router)
+    app.include_router(monitoring_router)
+
     return app

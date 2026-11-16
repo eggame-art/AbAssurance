@@ -86,7 +86,7 @@ def test_missing_field_is_reported_without_stopping_other_records(sources):
 
     data, rejected = clean_datasets(sources, MAPPERS)
 
-    assert [row["payment_id"] for row in data["payments"]] == ["AB-2"]
+    assert [row["payment_id"] for row in data["payments"]] == ["e64dffdf-e826-536b-a5a7-309ba71c02f3"]
     assert rejected[0]["row"] == 1
     assert "AB_PAYMENT_ID" in rejected[0]["reason"]
 
@@ -137,7 +137,7 @@ def test_rejected_database_values_keep_their_type_and_representation(sources):
 def test_rejects_inconsistent_source_identifier(sources):
     def invalid_payment(record, source):
         mapped = MAPPERS["payments"](record, source)
-        mapped["payment_id"] = "AP-OTHER"
+        mapped["payment_id"] = "9cb55612-5a13-5fce-a4e9-d05a8975bb34"
         return mapped
 
     mappers = {**MAPPERS, "payments": invalid_payment}
@@ -152,17 +152,17 @@ def test_rejects_cross_source_contract_reference(sources):
     def contract_mapper(record, source):
         mapped = MAPPERS["contracts"](record, source)
         mapped.update(
-            contract_id="AP-OTHER",
+            contract_id="9cb55612-5a13-5fce-a4e9-d05a8975bb34",
             source_system="assureplus",
             source_reference="OTHER",
         )
-        mapped["customer_id"] = "AP-100"
+        mapped["customer_id"] = "3fff094d-64af-55c0-abc9-2e86a559959e"
 
         return mapped
 
     def payment_mapper(record, source):
         mapped = MAPPERS["payments"](record, source)
-        mapped["contract_id"] = "AP-OTHER"
+        mapped["contract_id"] = "9cb55612-5a13-5fce-a4e9-d05a8975bb34"
         
         return mapped
 

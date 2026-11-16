@@ -1,6 +1,6 @@
 from abassurance.shared.errors import PipelineError
 from abassurance.shared.types import Datasets, Record
-from abassurance.systems.data_integration.mapping.identifiers import make_id
+from abassurance.systems.data_integration.mapping.identifiers import matches_identity
 
 ID_FIELDS = {"customers": "customer_id", "contracts": "contract_id", "claims": "claim_id", "payments": "payment_id"}
 RELATIONSHIPS = {
@@ -28,12 +28,14 @@ def validate_record(record: Record, entity: str, identifiers: set[str], parents:
             raise PipelineError(f"Cross-source {foreign_key} in {entity}")
 
 
-def validate_record_fields(record: Record, entity: str) -> None:
+def validate_record_fields(record: Record, entity: str, *, allow_legacy: bool = False) -> None:
     """Validate one mapped row independently of the storage/execution engine."""
     identifier = record[ID_FIELDS[entity]]
     source_field = "source_reference" if entity == "contracts" else "source_id"
 
-    if identifier != make_id(record["source_system"], record[source_field]):
+    if not matches_identity(
+        record["source_system"], record[source_field], identifier, entity, allow_legacy=allow_legacy
+    ):
         raise PipelineError(f"Inconsistent source identifier in {entity}")
 
     if entity == "contracts" and record["start_date"] and record["end_date"]:

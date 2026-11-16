@@ -19,12 +19,13 @@ class PredictionUnavailable(RuntimeError):
 
 
 class PredictionService:
-    def __init__(self, spark: "SparkSession", model: "PipelineModel", info: ModelInfo):
+    def __init__(self, spark: "SparkSession", model: "PipelineModel", info: ModelInfo, *, owns_spark: bool = True):
         self.spark = spark
         self.model = model
         self.info = info
         self._lock = Lock()
         self._closed = False
+        self._owns_spark = owns_spark
 
     @property
     def available(self) -> bool:
@@ -76,4 +77,5 @@ class PredictionService:
         with self._lock:
             if not self._closed:
                 self._closed = True
-                self.spark.stop()
+                if self._owns_spark:
+                    self.spark.stop()

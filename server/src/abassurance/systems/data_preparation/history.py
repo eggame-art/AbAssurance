@@ -12,7 +12,7 @@ from pyspark.sql.types import BooleanType, LongType, StringType, StructField, St
 
 from abassurance.shared.errors import ConfigurationError
 from abassurance.shared.models.history import EXIT_TYPES, HISTORY_IDS, HISTORY_MODELS
-from abassurance.systems.data_integration.mapping.identifiers import SOURCE_PREFIXES
+from abassurance.systems.data_integration.mapping.identifiers import matches_identity
 from abassurance.systems.spark_pipeline.hdfs import HdfsState
 
 HISTORY_VERSION = 1
@@ -70,14 +70,14 @@ def validate_history(frames: dict[str, DataFrame], *, is_synthetic: bool, as_of_
                 invalid = invalid | F.col(name).isNull()
 
         identifier = HISTORY_IDS[entity]
-        prefixes = F.create_map(*[F.lit(value) for pair in SOURCE_PREFIXES.items() for value in pair])
 
         if entity != "followup":
             reference = F.col("source_reference" if entity == "contracts" else "source_id")
 
-            identity = (F.length(F.trim(reference)) > 0) & (
-                F.col(identifier) == F.concat(prefixes[F.col("source_system")], F.lit("-"), reference)
-            )
+            identity = F.udf(
+                lambda source, ref, key, kind=entity: matches_identity(source, ref, key, kind, allow_legacy=True),
+                "boolean",
+            )("source_system", reference, identifier)
 
             invalid = invalid | ~F.coalesce(identity, F.lit(False))
 

@@ -1,0 +1,356 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<talendfile:ProcessType xmlns:talendfile="platform:/resource/org.talend.model/model/TalendFile.xsd" xmlns:xmi="http://www.omg.org/XMI" xmi:version="2.0" defaultContext="Default" jobType="Standard">
+  <context name="Default">
+    <contextParameter name="oracleHost" type="id_String" value=""/>
+    <contextParameter name="oraclePort" type="id_String" value=""/>
+    <contextParameter name="oracleService" type="id_String" value=""/>
+    <contextParameter name="oracleUser" type="id_String" value=""/>
+    <contextParameter name="oraclePassword" type="id_Password" value=""/>
+    <contextParameter name="sqlserverHost" type="id_String" value=""/>
+    <contextParameter name="sqlserverPort" type="id_String" value=""/>
+    <contextParameter name="sqlserverDatabase" type="id_String" value=""/>
+    <contextParameter name="sqlserverUser" type="id_String" value=""/>
+    <contextParameter name="sqlserverPassword" type="id_Password" value=""/>
+    <contextParameter name="sqlserverProperties" type="id_String" value=""/>
+    <contextParameter name="oracleProperties" type="id_String" value=""/>
+  </context>
+  <parameters>
+    <elementParameter field="CHECK" name="MULTI_THREAD_EXECATION" value="false"/>
+    <routinesParameter id="_AbAssuranceKafka" name="AbAssuranceKafka"/>
+  </parameters>
+  <node componentName="tJava" componentVersion="0.102" posX="120" posY="380">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="tJava_Setup"/>
+    <elementParameter field="MEMO_JAVA" name="CODE" value="context.oracleHost = routines.AbAssuranceKafka.env(&quot;ORACLE_HOST&quot;, &quot;oracle&quot;);&#10;context.oraclePort = routines.AbAssuranceKafka.env(&quot;ORACLE_PORT&quot;, &quot;1521&quot;);&#10;context.oracleService = routines.AbAssuranceKafka.env(&quot;ORACLE_SERVICE&quot;, &quot;FREEPDB1&quot;);&#10;context.oracleUser = routines.AbAssuranceKafka.env(&quot;ORACLE_USER&quot;, &quot;ABASSURANCE&quot;);&#10;context.oraclePassword = routines.AbAssuranceKafka.required(&quot;ORACLE_APP_PASSWORD&quot;, null);&#10;context.sqlserverHost = routines.AbAssuranceKafka.env(&quot;SQLSERVER_HOST&quot;, &quot;sqlserver&quot;);&#10;context.sqlserverPort = routines.AbAssuranceKafka.env(&quot;SQLSERVER_PORT&quot;, &quot;1433&quot;);&#10;context.sqlserverDatabase = routines.AbAssuranceKafka.env(&quot;SQLSERVER_DATABASE&quot;, &quot;AssurePlus&quot;);&#10;context.sqlserverUser = routines.AbAssuranceKafka.env(&quot;SQLSERVER_USER&quot;, &quot;sa&quot;);&#10;context.sqlserverPassword = routines.AbAssuranceKafka.required(&quot;SQLSERVER_PASSWORD&quot;, &quot;MSSQL_SA_PASSWORD&quot;);&#10;int connectionTimeout = routines.AbAssuranceKafka.timeout(&quot;DB_CONNECT_TIMEOUT&quot;, 10);&#10;context.oracleProperties = &quot;oracle.net.CONNECT_TIMEOUT=&quot; + connectionTimeout * 1000;&#10;context.sqlserverProperties = &quot;encrypt=&quot; + routines.AbAssuranceKafka.jdbcBoolean(&quot;SQLSERVER_ENCRYPT&quot;, &quot;yes&quot;) + &quot;;trustServerCertificate=&quot; + routines.AbAssuranceKafka.jdbcBoolean(&quot;SQLSERVER_TRUST_CERTIFICATE&quot;, &quot;no&quot;) + &quot;;loginTimeout=&quot; + connectionTimeout;&#10;globalMap.put(&quot;publisher&quot;, new routines.AbAssuranceKafka());"/>
+
+  </node>
+  <node componentName="tOracleInput" componentVersion="0.102" posX="120" posY="520">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="tOracleInput_customers"/>
+    <elementParameter field="MEMO_SQL" name="QUERY" value="&quot;SELECT AB_CLIENT_ID, AB_NOM, AB_PRENOM, TO_CHAR(AB_DATE_NAISSANCE, 'YYYY-MM-DD\&quot;T\&quot;HH24:MI:SS') AS AB_DATE_NAISSANCE, AB_EMAIL, AB_TELEPHONE, AB_ADRESSE, AB_CODE_POSTAL, AB_NUM_FISCAL, TO_CHAR(AB_DATE_CREATION, 'YYYY-MM-DD\&quot;T\&quot;HH24:MI:SS.FF9') AS AB_DATE_CREATION, AB_STATUT_CLIENT FROM ABASSURANCE.AB_CLIENT ORDER BY AB_CLIENT_ID&quot;"/>
+    <elementParameter field="CHECK" name="USE_EXISTING_CONNECTION" value="false"/>
+    <elementParameter field="PROPERTY_TYPE" name="PROPERTY" value="BUILT_IN"/>
+    <elementParameter field="SCHEMA_TYPE" name="SCHEMA" value="BUILT_IN"/>
+    <elementParameter field="DBTABLE" name="TABLE" value="&quot;AB_CLIENT&quot;"/>
+    <elementParameter field="CHECK" name="DIE_ON_ERROR" value="true"/>
+    <elementParameter field="CLOSED_LIST" name="CONNECTION_TYPE" value="ORACLE_SERVICE_NAME"/>
+    <elementParameter field="CLOSED_LIST" name="DB_VERSION" value="ORACLE_18"/>
+    <elementParameter field="TEXT" name="HOST" value="context.oracleHost"/>
+    <elementParameter field="TEXT" name="PORT" value="context.oraclePort"/>
+    <elementParameter field="TEXT" name="DBNAME" value="context.oracleService"/>
+    <elementParameter field="TEXT" name="SCHEMA_DB" value="&quot;ABASSURANCE&quot;"/>
+    <elementParameter field="TEXT" name="USER" value="context.oracleUser"/>
+    <elementParameter field="PASSWORD" name="PASS" value="context.oraclePassword"/>
+    <elementParameter field="TEXT" name="PROPERTIES" value="context.oracleProperties"/>
+    <metadata connector="FLOW" name="tOracleInput_customers">
+      <column name="AB_CLIENT_ID" label="AB_CLIENT_ID" originalDbColumnName="AB_CLIENT_ID" type="id_Long" sourceType="NUMBER" nullable="false" key="true" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_NOM" label="AB_NOM" originalDbColumnName="AB_NOM" type="id_String" sourceType="VARCHAR2" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_PRENOM" label="AB_PRENOM" originalDbColumnName="AB_PRENOM" type="id_String" sourceType="VARCHAR2" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_DATE_NAISSANCE" label="AB_DATE_NAISSANCE" originalDbColumnName="AB_DATE_NAISSANCE" type="id_String" sourceType="VARCHAR2" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_EMAIL" label="AB_EMAIL" originalDbColumnName="AB_EMAIL" type="id_String" sourceType="VARCHAR2" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_TELEPHONE" label="AB_TELEPHONE" originalDbColumnName="AB_TELEPHONE" type="id_String" sourceType="VARCHAR2" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_ADRESSE" label="AB_ADRESSE" originalDbColumnName="AB_ADRESSE" type="id_String" sourceType="VARCHAR2" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_CODE_POSTAL" label="AB_CODE_POSTAL" originalDbColumnName="AB_CODE_POSTAL" type="id_String" sourceType="VARCHAR2" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_NUM_FISCAL" label="AB_NUM_FISCAL" originalDbColumnName="AB_NUM_FISCAL" type="id_String" sourceType="VARCHAR2" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_DATE_CREATION" label="AB_DATE_CREATION" originalDbColumnName="AB_DATE_CREATION" type="id_String" sourceType="VARCHAR2" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_STATUT_CLIENT" label="AB_STATUT_CLIENT" originalDbColumnName="AB_STATUT_CLIENT" type="id_String" sourceType="VARCHAR2" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+    </metadata>
+  </node>
+  <node componentName="tJavaRow" componentVersion="0.102" posX="480" posY="520">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="tJavaRow_abassurance_customers"/>
+    <elementParameter field="MEMO_JAVA" name="CODE" value="java.util.Map&lt;String, Object&gt; record = new java.util.LinkedHashMap&lt;String, Object&gt;();&#10;record.put(&quot;AB_CLIENT_ID&quot;, row_abassurance_customers.AB_CLIENT_ID);&#10;record.put(&quot;AB_NOM&quot;, row_abassurance_customers.AB_NOM);&#10;record.put(&quot;AB_PRENOM&quot;, row_abassurance_customers.AB_PRENOM);&#10;record.put(&quot;AB_DATE_NAISSANCE&quot;, row_abassurance_customers.AB_DATE_NAISSANCE);&#10;record.put(&quot;AB_EMAIL&quot;, row_abassurance_customers.AB_EMAIL);&#10;record.put(&quot;AB_TELEPHONE&quot;, row_abassurance_customers.AB_TELEPHONE);&#10;record.put(&quot;AB_ADRESSE&quot;, row_abassurance_customers.AB_ADRESSE);&#10;record.put(&quot;AB_CODE_POSTAL&quot;, row_abassurance_customers.AB_CODE_POSTAL);&#10;record.put(&quot;AB_NUM_FISCAL&quot;, row_abassurance_customers.AB_NUM_FISCAL);&#10;record.put(&quot;AB_DATE_CREATION&quot;, row_abassurance_customers.AB_DATE_CREATION);&#10;record.put(&quot;AB_STATUT_CLIENT&quot;, row_abassurance_customers.AB_STATUT_CLIENT);&#10;((routines.AbAssuranceKafka) globalMap.get(&quot;publisher&quot;)).publish(&quot;abassurance&quot;, &quot;customers&quot;, &quot;AB_CLIENT_ID&quot;, record);"/>
+    <metadata connector="FLOW" name="tJavaRow_abassurance_customers"/>
+  </node>
+  <node componentName="tOracleInput" componentVersion="0.102" posX="120" posY="660">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="tOracleInput_contracts"/>
+    <elementParameter field="MEMO_SQL" name="QUERY" value="&quot;SELECT AB_POLICY_NUMBER, AB_CLIENT_ID, AB_TYPE_ASSURANCE, TO_CHAR(AB_DATE_DEBUT, 'YYYY-MM-DD\&quot;T\&quot;HH24:MI:SS') AS AB_DATE_DEBUT, TO_CHAR(AB_DATE_FIN, 'YYYY-MM-DD\&quot;T\&quot;HH24:MI:SS') AS AB_DATE_FIN, AB_PRIME_ANNUELLE, AB_STATUT_CONTRAT, AB_AGENCE_ID FROM ABASSURANCE.AB_CONTRAT ORDER BY AB_POLICY_NUMBER&quot;"/>
+    <elementParameter field="CHECK" name="USE_EXISTING_CONNECTION" value="false"/>
+    <elementParameter field="PROPERTY_TYPE" name="PROPERTY" value="BUILT_IN"/>
+    <elementParameter field="SCHEMA_TYPE" name="SCHEMA" value="BUILT_IN"/>
+    <elementParameter field="DBTABLE" name="TABLE" value="&quot;AB_CONTRAT&quot;"/>
+    <elementParameter field="CHECK" name="DIE_ON_ERROR" value="true"/>
+    <elementParameter field="CLOSED_LIST" name="CONNECTION_TYPE" value="ORACLE_SERVICE_NAME"/>
+    <elementParameter field="CLOSED_LIST" name="DB_VERSION" value="ORACLE_18"/>
+    <elementParameter field="TEXT" name="HOST" value="context.oracleHost"/>
+    <elementParameter field="TEXT" name="PORT" value="context.oraclePort"/>
+    <elementParameter field="TEXT" name="DBNAME" value="context.oracleService"/>
+    <elementParameter field="TEXT" name="SCHEMA_DB" value="&quot;ABASSURANCE&quot;"/>
+    <elementParameter field="TEXT" name="USER" value="context.oracleUser"/>
+    <elementParameter field="PASSWORD" name="PASS" value="context.oraclePassword"/>
+    <elementParameter field="TEXT" name="PROPERTIES" value="context.oracleProperties"/>
+    <metadata connector="FLOW" name="tOracleInput_contracts">
+      <column name="AB_POLICY_NUMBER" label="AB_POLICY_NUMBER" originalDbColumnName="AB_POLICY_NUMBER" type="id_String" sourceType="VARCHAR2" nullable="false" key="true" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_CLIENT_ID" label="AB_CLIENT_ID" originalDbColumnName="AB_CLIENT_ID" type="id_Long" sourceType="NUMBER" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_TYPE_ASSURANCE" label="AB_TYPE_ASSURANCE" originalDbColumnName="AB_TYPE_ASSURANCE" type="id_String" sourceType="VARCHAR2" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_DATE_DEBUT" label="AB_DATE_DEBUT" originalDbColumnName="AB_DATE_DEBUT" type="id_String" sourceType="VARCHAR2" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_DATE_FIN" label="AB_DATE_FIN" originalDbColumnName="AB_DATE_FIN" type="id_String" sourceType="VARCHAR2" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_PRIME_ANNUELLE" label="AB_PRIME_ANNUELLE" originalDbColumnName="AB_PRIME_ANNUELLE" type="id_BigDecimal" sourceType="NUMBER" nullable="true" key="false" length="22" precision="2" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_STATUT_CONTRAT" label="AB_STATUT_CONTRAT" originalDbColumnName="AB_STATUT_CONTRAT" type="id_String" sourceType="VARCHAR2" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_AGENCE_ID" label="AB_AGENCE_ID" originalDbColumnName="AB_AGENCE_ID" type="id_Long" sourceType="NUMBER" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+    </metadata>
+  </node>
+  <node componentName="tJavaRow" componentVersion="0.102" posX="480" posY="660">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="tJavaRow_abassurance_contracts"/>
+    <elementParameter field="MEMO_JAVA" name="CODE" value="java.util.Map&lt;String, Object&gt; record = new java.util.LinkedHashMap&lt;String, Object&gt;();&#10;record.put(&quot;AB_POLICY_NUMBER&quot;, row_abassurance_contracts.AB_POLICY_NUMBER);&#10;record.put(&quot;AB_CLIENT_ID&quot;, row_abassurance_contracts.AB_CLIENT_ID);&#10;record.put(&quot;AB_TYPE_ASSURANCE&quot;, row_abassurance_contracts.AB_TYPE_ASSURANCE);&#10;record.put(&quot;AB_DATE_DEBUT&quot;, row_abassurance_contracts.AB_DATE_DEBUT);&#10;record.put(&quot;AB_DATE_FIN&quot;, row_abassurance_contracts.AB_DATE_FIN);&#10;record.put(&quot;AB_PRIME_ANNUELLE&quot;, row_abassurance_contracts.AB_PRIME_ANNUELLE);&#10;record.put(&quot;AB_STATUT_CONTRAT&quot;, row_abassurance_contracts.AB_STATUT_CONTRAT);&#10;record.put(&quot;AB_AGENCE_ID&quot;, row_abassurance_contracts.AB_AGENCE_ID);&#10;((routines.AbAssuranceKafka) globalMap.get(&quot;publisher&quot;)).publish(&quot;abassurance&quot;, &quot;contracts&quot;, &quot;AB_POLICY_NUMBER&quot;, record);"/>
+    <metadata connector="FLOW" name="tJavaRow_abassurance_contracts"/>
+  </node>
+  <node componentName="tOracleInput" componentVersion="0.102" posX="120" posY="800">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="tOracleInput_claims"/>
+    <elementParameter field="MEMO_SQL" name="QUERY" value="&quot;SELECT AB_CLAIM_ID, AB_POLICY_NUMBER, TO_CHAR(AB_DATE_SINISTRE, 'YYYY-MM-DD\&quot;T\&quot;HH24:MI:SS.FF9') AS AB_DATE_SINISTRE, AB_MONTANT_ESTIME, AB_STATUT_SINISTRE, AB_DESCRIPTION FROM ABASSURANCE.AB_SINISTRE ORDER BY AB_CLAIM_ID&quot;"/>
+    <elementParameter field="CHECK" name="USE_EXISTING_CONNECTION" value="false"/>
+    <elementParameter field="PROPERTY_TYPE" name="PROPERTY" value="BUILT_IN"/>
+    <elementParameter field="SCHEMA_TYPE" name="SCHEMA" value="BUILT_IN"/>
+    <elementParameter field="DBTABLE" name="TABLE" value="&quot;AB_SINISTRE&quot;"/>
+    <elementParameter field="CHECK" name="DIE_ON_ERROR" value="true"/>
+    <elementParameter field="CLOSED_LIST" name="CONNECTION_TYPE" value="ORACLE_SERVICE_NAME"/>
+    <elementParameter field="CLOSED_LIST" name="DB_VERSION" value="ORACLE_18"/>
+    <elementParameter field="TEXT" name="HOST" value="context.oracleHost"/>
+    <elementParameter field="TEXT" name="PORT" value="context.oraclePort"/>
+    <elementParameter field="TEXT" name="DBNAME" value="context.oracleService"/>
+    <elementParameter field="TEXT" name="SCHEMA_DB" value="&quot;ABASSURANCE&quot;"/>
+    <elementParameter field="TEXT" name="USER" value="context.oracleUser"/>
+    <elementParameter field="PASSWORD" name="PASS" value="context.oraclePassword"/>
+    <elementParameter field="TEXT" name="PROPERTIES" value="context.oracleProperties"/>
+    <metadata connector="FLOW" name="tOracleInput_claims">
+      <column name="AB_CLAIM_ID" label="AB_CLAIM_ID" originalDbColumnName="AB_CLAIM_ID" type="id_Long" sourceType="NUMBER" nullable="false" key="true" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_POLICY_NUMBER" label="AB_POLICY_NUMBER" originalDbColumnName="AB_POLICY_NUMBER" type="id_String" sourceType="VARCHAR2" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_DATE_SINISTRE" label="AB_DATE_SINISTRE" originalDbColumnName="AB_DATE_SINISTRE" type="id_String" sourceType="VARCHAR2" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_MONTANT_ESTIME" label="AB_MONTANT_ESTIME" originalDbColumnName="AB_MONTANT_ESTIME" type="id_BigDecimal" sourceType="NUMBER" nullable="true" key="false" length="22" precision="2" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_STATUT_SINISTRE" label="AB_STATUT_SINISTRE" originalDbColumnName="AB_STATUT_SINISTRE" type="id_String" sourceType="VARCHAR2" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_DESCRIPTION" label="AB_DESCRIPTION" originalDbColumnName="AB_DESCRIPTION" type="id_String" sourceType="CLOB" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+    </metadata>
+  </node>
+  <node componentName="tJavaRow" componentVersion="0.102" posX="480" posY="800">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="tJavaRow_abassurance_claims"/>
+    <elementParameter field="MEMO_JAVA" name="CODE" value="java.util.Map&lt;String, Object&gt; record = new java.util.LinkedHashMap&lt;String, Object&gt;();&#10;record.put(&quot;AB_CLAIM_ID&quot;, row_abassurance_claims.AB_CLAIM_ID);&#10;record.put(&quot;AB_POLICY_NUMBER&quot;, row_abassurance_claims.AB_POLICY_NUMBER);&#10;record.put(&quot;AB_DATE_SINISTRE&quot;, row_abassurance_claims.AB_DATE_SINISTRE);&#10;record.put(&quot;AB_MONTANT_ESTIME&quot;, row_abassurance_claims.AB_MONTANT_ESTIME);&#10;record.put(&quot;AB_STATUT_SINISTRE&quot;, row_abassurance_claims.AB_STATUT_SINISTRE);&#10;record.put(&quot;AB_DESCRIPTION&quot;, row_abassurance_claims.AB_DESCRIPTION);&#10;((routines.AbAssuranceKafka) globalMap.get(&quot;publisher&quot;)).publish(&quot;abassurance&quot;, &quot;claims&quot;, &quot;AB_CLAIM_ID&quot;, record);"/>
+    <metadata connector="FLOW" name="tJavaRow_abassurance_claims"/>
+  </node>
+  <node componentName="tOracleInput" componentVersion="0.102" posX="120" posY="940">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="tOracleInput_payments"/>
+    <elementParameter field="MEMO_SQL" name="QUERY" value="&quot;SELECT AB_PAYMENT_ID, AB_POLICY_NUMBER, TO_CHAR(AB_DATE_PAIEMENT, 'YYYY-MM-DD\&quot;T\&quot;HH24:MI:SS') AS AB_DATE_PAIEMENT, AB_MONTANT, AB_MODE_PAIEMENT FROM ABASSURANCE.AB_PAIEMENT ORDER BY AB_PAYMENT_ID&quot;"/>
+    <elementParameter field="CHECK" name="USE_EXISTING_CONNECTION" value="false"/>
+    <elementParameter field="PROPERTY_TYPE" name="PROPERTY" value="BUILT_IN"/>
+    <elementParameter field="SCHEMA_TYPE" name="SCHEMA" value="BUILT_IN"/>
+    <elementParameter field="DBTABLE" name="TABLE" value="&quot;AB_PAIEMENT&quot;"/>
+    <elementParameter field="CHECK" name="DIE_ON_ERROR" value="true"/>
+    <elementParameter field="CLOSED_LIST" name="CONNECTION_TYPE" value="ORACLE_SERVICE_NAME"/>
+    <elementParameter field="CLOSED_LIST" name="DB_VERSION" value="ORACLE_18"/>
+    <elementParameter field="TEXT" name="HOST" value="context.oracleHost"/>
+    <elementParameter field="TEXT" name="PORT" value="context.oraclePort"/>
+    <elementParameter field="TEXT" name="DBNAME" value="context.oracleService"/>
+    <elementParameter field="TEXT" name="SCHEMA_DB" value="&quot;ABASSURANCE&quot;"/>
+    <elementParameter field="TEXT" name="USER" value="context.oracleUser"/>
+    <elementParameter field="PASSWORD" name="PASS" value="context.oraclePassword"/>
+    <elementParameter field="TEXT" name="PROPERTIES" value="context.oracleProperties"/>
+    <metadata connector="FLOW" name="tOracleInput_payments">
+      <column name="AB_PAYMENT_ID" label="AB_PAYMENT_ID" originalDbColumnName="AB_PAYMENT_ID" type="id_Long" sourceType="NUMBER" nullable="false" key="true" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_POLICY_NUMBER" label="AB_POLICY_NUMBER" originalDbColumnName="AB_POLICY_NUMBER" type="id_String" sourceType="VARCHAR2" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_DATE_PAIEMENT" label="AB_DATE_PAIEMENT" originalDbColumnName="AB_DATE_PAIEMENT" type="id_String" sourceType="VARCHAR2" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_MONTANT" label="AB_MONTANT" originalDbColumnName="AB_MONTANT" type="id_BigDecimal" sourceType="NUMBER" nullable="true" key="false" length="22" precision="2" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AB_MODE_PAIEMENT" label="AB_MODE_PAIEMENT" originalDbColumnName="AB_MODE_PAIEMENT" type="id_String" sourceType="VARCHAR2" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+    </metadata>
+  </node>
+  <node componentName="tJavaRow" componentVersion="0.102" posX="480" posY="940">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="tJavaRow_abassurance_payments"/>
+    <elementParameter field="MEMO_JAVA" name="CODE" value="java.util.Map&lt;String, Object&gt; record = new java.util.LinkedHashMap&lt;String, Object&gt;();&#10;record.put(&quot;AB_PAYMENT_ID&quot;, row_abassurance_payments.AB_PAYMENT_ID);&#10;record.put(&quot;AB_POLICY_NUMBER&quot;, row_abassurance_payments.AB_POLICY_NUMBER);&#10;record.put(&quot;AB_DATE_PAIEMENT&quot;, row_abassurance_payments.AB_DATE_PAIEMENT);&#10;record.put(&quot;AB_MONTANT&quot;, row_abassurance_payments.AB_MONTANT);&#10;record.put(&quot;AB_MODE_PAIEMENT&quot;, row_abassurance_payments.AB_MODE_PAIEMENT);&#10;((routines.AbAssuranceKafka) globalMap.get(&quot;publisher&quot;)).publish(&quot;abassurance&quot;, &quot;payments&quot;, &quot;AB_PAYMENT_ID&quot;, record);"/>
+    <metadata connector="FLOW" name="tJavaRow_abassurance_payments"/>
+  </node>
+  <node componentName="tMSSqlInput" componentVersion="0.102" posX="120" posY="1080">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="tMSSqlInput_customers"/>
+    <elementParameter field="MEMO_SQL" name="QUERY" value="&quot;SELECT AP_USER_ID, AP_FULL_NAME, AP_BIRTH_DATE, AP_MAIL_ADDRESS, AP_PHONE_NUMBER, AP_STREET_ADDRESS, AP_ZIP_CODE, CONVERT(varchar(33), AP_CREATED_AT, 126) AS AP_CREATED_AT, AP_CUSTOMER_STATUS, AP_LOYALTY_SCORE FROM dbo.AP_USERS ORDER BY AP_USER_ID&quot;"/>
+    <elementParameter field="CHECK" name="USE_EXISTING_CONNECTION" value="false"/>
+    <elementParameter field="PROPERTY_TYPE" name="PROPERTY" value="BUILT_IN"/>
+    <elementParameter field="SCHEMA_TYPE" name="SCHEMA" value="BUILT_IN"/>
+    <elementParameter field="DBTABLE" name="TABLE" value="&quot;AP_USERS&quot;"/>
+    <elementParameter field="CHECK" name="DIE_ON_ERROR" value="true"/>
+    <elementParameter field="CLOSED_LIST" name="DRIVER" value="MSSQL_PROP"/>
+    <elementParameter field="TEXT" name="HOST" value="context.sqlserverHost"/>
+    <elementParameter field="TEXT" name="PORT" value="context.sqlserverPort"/>
+    <elementParameter field="TEXT" name="DBNAME" value="context.sqlserverDatabase"/>
+    <elementParameter field="TEXT" name="DB_SCHEMA" value="&quot;dbo&quot;"/>
+    <elementParameter field="TEXT" name="USER" value="context.sqlserverUser"/>
+    <elementParameter field="PASSWORD" name="PASS" value="context.sqlserverPassword"/>
+    <elementParameter field="TEXT" name="PROPERTIES" value="context.sqlserverProperties"/>
+    <elementParameter field="CHECK" name="ACTIVE_DIR_AUTH" value="false"/>
+    <metadata connector="FLOW" name="tMSSqlInput_customers">
+      <column name="AP_USER_ID" label="AP_USER_ID" originalDbColumnName="AP_USER_ID" type="id_Integer" sourceType="INT" nullable="false" key="true" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_FULL_NAME" label="AP_FULL_NAME" originalDbColumnName="AP_FULL_NAME" type="id_String" sourceType="NVARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_BIRTH_DATE" label="AP_BIRTH_DATE" originalDbColumnName="AP_BIRTH_DATE" type="id_String" sourceType="NVARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_MAIL_ADDRESS" label="AP_MAIL_ADDRESS" originalDbColumnName="AP_MAIL_ADDRESS" type="id_String" sourceType="NVARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_PHONE_NUMBER" label="AP_PHONE_NUMBER" originalDbColumnName="AP_PHONE_NUMBER" type="id_String" sourceType="NVARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_STREET_ADDRESS" label="AP_STREET_ADDRESS" originalDbColumnName="AP_STREET_ADDRESS" type="id_String" sourceType="NVARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_ZIP_CODE" label="AP_ZIP_CODE" originalDbColumnName="AP_ZIP_CODE" type="id_String" sourceType="NVARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_CREATED_AT" label="AP_CREATED_AT" originalDbColumnName="AP_CREATED_AT" type="id_String" sourceType="VARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_CUSTOMER_STATUS" label="AP_CUSTOMER_STATUS" originalDbColumnName="AP_CUSTOMER_STATUS" type="id_String" sourceType="NVARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_LOYALTY_SCORE" label="AP_LOYALTY_SCORE" originalDbColumnName="AP_LOYALTY_SCORE" type="id_Integer" sourceType="INT" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+    </metadata>
+  </node>
+  <node componentName="tJavaRow" componentVersion="0.102" posX="480" posY="1080">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="tJavaRow_assureplus_customers"/>
+    <elementParameter field="MEMO_JAVA" name="CODE" value="java.util.Map&lt;String, Object&gt; record = new java.util.LinkedHashMap&lt;String, Object&gt;();&#10;record.put(&quot;AP_USER_ID&quot;, row_assureplus_customers.AP_USER_ID);&#10;record.put(&quot;AP_FULL_NAME&quot;, row_assureplus_customers.AP_FULL_NAME);&#10;record.put(&quot;AP_BIRTH_DATE&quot;, row_assureplus_customers.AP_BIRTH_DATE);&#10;record.put(&quot;AP_MAIL_ADDRESS&quot;, row_assureplus_customers.AP_MAIL_ADDRESS);&#10;record.put(&quot;AP_PHONE_NUMBER&quot;, row_assureplus_customers.AP_PHONE_NUMBER);&#10;record.put(&quot;AP_STREET_ADDRESS&quot;, row_assureplus_customers.AP_STREET_ADDRESS);&#10;record.put(&quot;AP_ZIP_CODE&quot;, row_assureplus_customers.AP_ZIP_CODE);&#10;record.put(&quot;AP_CREATED_AT&quot;, row_assureplus_customers.AP_CREATED_AT);&#10;record.put(&quot;AP_CUSTOMER_STATUS&quot;, row_assureplus_customers.AP_CUSTOMER_STATUS);&#10;record.put(&quot;AP_LOYALTY_SCORE&quot;, row_assureplus_customers.AP_LOYALTY_SCORE);&#10;((routines.AbAssuranceKafka) globalMap.get(&quot;publisher&quot;)).publish(&quot;assureplus&quot;, &quot;customers&quot;, &quot;AP_USER_ID&quot;, record);"/>
+    <metadata connector="FLOW" name="tJavaRow_assureplus_customers"/>
+  </node>
+  <node componentName="tMSSqlInput" componentVersion="0.102" posX="120" posY="1220">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="tMSSqlInput_contracts"/>
+    <elementParameter field="MEMO_SQL" name="QUERY" value="&quot;SELECT AP_CONTRACT_REF, AP_USER_ID, AP_PRODUCT_CODE, CONVERT(varchar(33), AP_START_DATE, 126) AS AP_START_DATE, CONVERT(varchar(33), AP_END_DATE, 126) AS AP_END_DATE, AP_MONTHLY_PREMIUM, AP_CONTRACT_STATE, AP_BROKER_CODE FROM dbo.AP_CONTRACTS ORDER BY AP_CONTRACT_REF&quot;"/>
+    <elementParameter field="CHECK" name="USE_EXISTING_CONNECTION" value="false"/>
+    <elementParameter field="PROPERTY_TYPE" name="PROPERTY" value="BUILT_IN"/>
+    <elementParameter field="SCHEMA_TYPE" name="SCHEMA" value="BUILT_IN"/>
+    <elementParameter field="DBTABLE" name="TABLE" value="&quot;AP_CONTRACTS&quot;"/>
+    <elementParameter field="CHECK" name="DIE_ON_ERROR" value="true"/>
+    <elementParameter field="CLOSED_LIST" name="DRIVER" value="MSSQL_PROP"/>
+    <elementParameter field="TEXT" name="HOST" value="context.sqlserverHost"/>
+    <elementParameter field="TEXT" name="PORT" value="context.sqlserverPort"/>
+    <elementParameter field="TEXT" name="DBNAME" value="context.sqlserverDatabase"/>
+    <elementParameter field="TEXT" name="DB_SCHEMA" value="&quot;dbo&quot;"/>
+    <elementParameter field="TEXT" name="USER" value="context.sqlserverUser"/>
+    <elementParameter field="PASSWORD" name="PASS" value="context.sqlserverPassword"/>
+    <elementParameter field="TEXT" name="PROPERTIES" value="context.sqlserverProperties"/>
+    <elementParameter field="CHECK" name="ACTIVE_DIR_AUTH" value="false"/>
+    <metadata connector="FLOW" name="tMSSqlInput_contracts">
+      <column name="AP_CONTRACT_REF" label="AP_CONTRACT_REF" originalDbColumnName="AP_CONTRACT_REF" type="id_String" sourceType="NVARCHAR" nullable="false" key="true" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_USER_ID" label="AP_USER_ID" originalDbColumnName="AP_USER_ID" type="id_Integer" sourceType="INT" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_PRODUCT_CODE" label="AP_PRODUCT_CODE" originalDbColumnName="AP_PRODUCT_CODE" type="id_String" sourceType="NVARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_START_DATE" label="AP_START_DATE" originalDbColumnName="AP_START_DATE" type="id_String" sourceType="VARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_END_DATE" label="AP_END_DATE" originalDbColumnName="AP_END_DATE" type="id_String" sourceType="VARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_MONTHLY_PREMIUM" label="AP_MONTHLY_PREMIUM" originalDbColumnName="AP_MONTHLY_PREMIUM" type="id_BigDecimal" sourceType="DECIMAL" nullable="true" key="false" length="22" precision="2" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_CONTRACT_STATE" label="AP_CONTRACT_STATE" originalDbColumnName="AP_CONTRACT_STATE" type="id_String" sourceType="NVARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_BROKER_CODE" label="AP_BROKER_CODE" originalDbColumnName="AP_BROKER_CODE" type="id_String" sourceType="NVARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+    </metadata>
+  </node>
+  <node componentName="tJavaRow" componentVersion="0.102" posX="480" posY="1220">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="tJavaRow_assureplus_contracts"/>
+    <elementParameter field="MEMO_JAVA" name="CODE" value="java.util.Map&lt;String, Object&gt; record = new java.util.LinkedHashMap&lt;String, Object&gt;();&#10;record.put(&quot;AP_CONTRACT_REF&quot;, row_assureplus_contracts.AP_CONTRACT_REF);&#10;record.put(&quot;AP_USER_ID&quot;, row_assureplus_contracts.AP_USER_ID);&#10;record.put(&quot;AP_PRODUCT_CODE&quot;, row_assureplus_contracts.AP_PRODUCT_CODE);&#10;record.put(&quot;AP_START_DATE&quot;, row_assureplus_contracts.AP_START_DATE);&#10;record.put(&quot;AP_END_DATE&quot;, row_assureplus_contracts.AP_END_DATE);&#10;record.put(&quot;AP_MONTHLY_PREMIUM&quot;, row_assureplus_contracts.AP_MONTHLY_PREMIUM);&#10;record.put(&quot;AP_CONTRACT_STATE&quot;, row_assureplus_contracts.AP_CONTRACT_STATE);&#10;record.put(&quot;AP_BROKER_CODE&quot;, row_assureplus_contracts.AP_BROKER_CODE);&#10;((routines.AbAssuranceKafka) globalMap.get(&quot;publisher&quot;)).publish(&quot;assureplus&quot;, &quot;contracts&quot;, &quot;AP_CONTRACT_REF&quot;, record);"/>
+    <metadata connector="FLOW" name="tJavaRow_assureplus_contracts"/>
+  </node>
+  <node componentName="tMSSqlInput" componentVersion="0.102" posX="120" posY="1360">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="tMSSqlInput_claims"/>
+    <elementParameter field="MEMO_SQL" name="QUERY" value="&quot;SELECT AP_SINISTRE_NUM, AP_CONTRACT_REF, AP_INCIDENT_DATE, AP_ESTIMATED_AMOUNT, AP_CLAIM_STATUS, AP_CLAIM_COMMENT, AP_FRAUD_SCORE FROM dbo.AP_CLAIMS ORDER BY AP_SINISTRE_NUM&quot;"/>
+    <elementParameter field="CHECK" name="USE_EXISTING_CONNECTION" value="false"/>
+    <elementParameter field="PROPERTY_TYPE" name="PROPERTY" value="BUILT_IN"/>
+    <elementParameter field="SCHEMA_TYPE" name="SCHEMA" value="BUILT_IN"/>
+    <elementParameter field="DBTABLE" name="TABLE" value="&quot;AP_CLAIMS&quot;"/>
+    <elementParameter field="CHECK" name="DIE_ON_ERROR" value="true"/>
+    <elementParameter field="CLOSED_LIST" name="DRIVER" value="MSSQL_PROP"/>
+    <elementParameter field="TEXT" name="HOST" value="context.sqlserverHost"/>
+    <elementParameter field="TEXT" name="PORT" value="context.sqlserverPort"/>
+    <elementParameter field="TEXT" name="DBNAME" value="context.sqlserverDatabase"/>
+    <elementParameter field="TEXT" name="DB_SCHEMA" value="&quot;dbo&quot;"/>
+    <elementParameter field="TEXT" name="USER" value="context.sqlserverUser"/>
+    <elementParameter field="PASSWORD" name="PASS" value="context.sqlserverPassword"/>
+    <elementParameter field="TEXT" name="PROPERTIES" value="context.sqlserverProperties"/>
+    <elementParameter field="CHECK" name="ACTIVE_DIR_AUTH" value="false"/>
+    <metadata connector="FLOW" name="tMSSqlInput_claims">
+      <column name="AP_SINISTRE_NUM" label="AP_SINISTRE_NUM" originalDbColumnName="AP_SINISTRE_NUM" type="id_Integer" sourceType="INT" nullable="false" key="true" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_CONTRACT_REF" label="AP_CONTRACT_REF" originalDbColumnName="AP_CONTRACT_REF" type="id_String" sourceType="NVARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_INCIDENT_DATE" label="AP_INCIDENT_DATE" originalDbColumnName="AP_INCIDENT_DATE" type="id_String" sourceType="NVARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_ESTIMATED_AMOUNT" label="AP_ESTIMATED_AMOUNT" originalDbColumnName="AP_ESTIMATED_AMOUNT" type="id_BigDecimal" sourceType="DECIMAL" nullable="true" key="false" length="22" precision="2" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_CLAIM_STATUS" label="AP_CLAIM_STATUS" originalDbColumnName="AP_CLAIM_STATUS" type="id_String" sourceType="NVARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_CLAIM_COMMENT" label="AP_CLAIM_COMMENT" originalDbColumnName="AP_CLAIM_COMMENT" type="id_String" sourceType="NVARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_FRAUD_SCORE" label="AP_FRAUD_SCORE" originalDbColumnName="AP_FRAUD_SCORE" type="id_BigDecimal" sourceType="DECIMAL" nullable="true" key="false" length="22" precision="2" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+    </metadata>
+  </node>
+  <node componentName="tJavaRow" componentVersion="0.102" posX="480" posY="1360">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="tJavaRow_assureplus_claims"/>
+    <elementParameter field="MEMO_JAVA" name="CODE" value="java.util.Map&lt;String, Object&gt; record = new java.util.LinkedHashMap&lt;String, Object&gt;();&#10;record.put(&quot;AP_SINISTRE_NUM&quot;, row_assureplus_claims.AP_SINISTRE_NUM);&#10;record.put(&quot;AP_CONTRACT_REF&quot;, row_assureplus_claims.AP_CONTRACT_REF);&#10;record.put(&quot;AP_INCIDENT_DATE&quot;, row_assureplus_claims.AP_INCIDENT_DATE);&#10;record.put(&quot;AP_ESTIMATED_AMOUNT&quot;, row_assureplus_claims.AP_ESTIMATED_AMOUNT);&#10;record.put(&quot;AP_CLAIM_STATUS&quot;, row_assureplus_claims.AP_CLAIM_STATUS);&#10;record.put(&quot;AP_CLAIM_COMMENT&quot;, row_assureplus_claims.AP_CLAIM_COMMENT);&#10;record.put(&quot;AP_FRAUD_SCORE&quot;, row_assureplus_claims.AP_FRAUD_SCORE);&#10;((routines.AbAssuranceKafka) globalMap.get(&quot;publisher&quot;)).publish(&quot;assureplus&quot;, &quot;claims&quot;, &quot;AP_SINISTRE_NUM&quot;, record);"/>
+    <metadata connector="FLOW" name="tJavaRow_assureplus_claims"/>
+  </node>
+  <node componentName="tMSSqlInput" componentVersion="0.102" posX="120" posY="1500">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="tMSSqlInput_payments"/>
+    <elementParameter field="MEMO_SQL" name="QUERY" value="&quot;SELECT AP_PAYMENT_REF, AP_CONTRACT_REF, CONVERT(varchar(33), AP_PAYMENT_DATETIME, 126) AS AP_PAYMENT_DATETIME, AP_AMOUNT_PAID, AP_PAYMENT_CHANNEL, AP_TRANSACTION_STATUS FROM dbo.AP_PAYMENTS ORDER BY AP_PAYMENT_REF&quot;"/>
+    <elementParameter field="CHECK" name="USE_EXISTING_CONNECTION" value="false"/>
+    <elementParameter field="PROPERTY_TYPE" name="PROPERTY" value="BUILT_IN"/>
+    <elementParameter field="SCHEMA_TYPE" name="SCHEMA" value="BUILT_IN"/>
+    <elementParameter field="DBTABLE" name="TABLE" value="&quot;AP_PAYMENTS&quot;"/>
+    <elementParameter field="CHECK" name="DIE_ON_ERROR" value="true"/>
+    <elementParameter field="CLOSED_LIST" name="DRIVER" value="MSSQL_PROP"/>
+    <elementParameter field="TEXT" name="HOST" value="context.sqlserverHost"/>
+    <elementParameter field="TEXT" name="PORT" value="context.sqlserverPort"/>
+    <elementParameter field="TEXT" name="DBNAME" value="context.sqlserverDatabase"/>
+    <elementParameter field="TEXT" name="DB_SCHEMA" value="&quot;dbo&quot;"/>
+    <elementParameter field="TEXT" name="USER" value="context.sqlserverUser"/>
+    <elementParameter field="PASSWORD" name="PASS" value="context.sqlserverPassword"/>
+    <elementParameter field="TEXT" name="PROPERTIES" value="context.sqlserverProperties"/>
+    <elementParameter field="CHECK" name="ACTIVE_DIR_AUTH" value="false"/>
+    <metadata connector="FLOW" name="tMSSqlInput_payments">
+      <column name="AP_PAYMENT_REF" label="AP_PAYMENT_REF" originalDbColumnName="AP_PAYMENT_REF" type="id_String" sourceType="UNIQUEIDENTIFIER" nullable="false" key="true" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_CONTRACT_REF" label="AP_CONTRACT_REF" originalDbColumnName="AP_CONTRACT_REF" type="id_String" sourceType="NVARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_PAYMENT_DATETIME" label="AP_PAYMENT_DATETIME" originalDbColumnName="AP_PAYMENT_DATETIME" type="id_String" sourceType="VARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_AMOUNT_PAID" label="AP_AMOUNT_PAID" originalDbColumnName="AP_AMOUNT_PAID" type="id_BigDecimal" sourceType="DECIMAL" nullable="true" key="false" length="22" precision="2" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_PAYMENT_CHANNEL" label="AP_PAYMENT_CHANNEL" originalDbColumnName="AP_PAYMENT_CHANNEL" type="id_String" sourceType="NVARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+      <column name="AP_TRANSACTION_STATUS" label="AP_TRANSACTION_STATUS" originalDbColumnName="AP_TRANSACTION_STATUS" type="id_String" sourceType="NVARCHAR" nullable="true" key="false" length="-1" precision="-1" pattern="&quot;yyyy-MM-dd'T'HH:mm:ss.SSS&quot;"/>
+    </metadata>
+  </node>
+  <node componentName="tJavaRow" componentVersion="0.102" posX="480" posY="1500">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="tJavaRow_assureplus_payments"/>
+    <elementParameter field="MEMO_JAVA" name="CODE" value="java.util.Map&lt;String, Object&gt; record = new java.util.LinkedHashMap&lt;String, Object&gt;();&#10;record.put(&quot;AP_PAYMENT_REF&quot;, row_assureplus_payments.AP_PAYMENT_REF);&#10;record.put(&quot;AP_CONTRACT_REF&quot;, row_assureplus_payments.AP_CONTRACT_REF);&#10;record.put(&quot;AP_PAYMENT_DATETIME&quot;, row_assureplus_payments.AP_PAYMENT_DATETIME);&#10;record.put(&quot;AP_AMOUNT_PAID&quot;, row_assureplus_payments.AP_AMOUNT_PAID);&#10;record.put(&quot;AP_PAYMENT_CHANNEL&quot;, row_assureplus_payments.AP_PAYMENT_CHANNEL);&#10;record.put(&quot;AP_TRANSACTION_STATUS&quot;, row_assureplus_payments.AP_TRANSACTION_STATUS);&#10;((routines.AbAssuranceKafka) globalMap.get(&quot;publisher&quot;)).publish(&quot;assureplus&quot;, &quot;payments&quot;, &quot;AP_PAYMENT_REF&quot;, record);"/>
+    <metadata connector="FLOW" name="tJavaRow_assureplus_payments"/>
+  </node>
+  <node componentName="tJava" componentVersion="0.102" posX="120" posY="1640">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="tJava_Completed"/>
+    <elementParameter field="MEMO_JAVA" name="CODE" value="java.util.Map&lt;String, Long&gt; extracted = new java.util.LinkedHashMap&lt;String, Long&gt;();&#10;extracted.put(&quot;abassurance:customers&quot;, ((Number) globalMap.get(&quot;tOracleInput_customers_NB_LINE&quot;)).longValue());&#10;extracted.put(&quot;abassurance:contracts&quot;, ((Number) globalMap.get(&quot;tOracleInput_contracts_NB_LINE&quot;)).longValue());&#10;extracted.put(&quot;abassurance:claims&quot;, ((Number) globalMap.get(&quot;tOracleInput_claims_NB_LINE&quot;)).longValue());&#10;extracted.put(&quot;abassurance:payments&quot;, ((Number) globalMap.get(&quot;tOracleInput_payments_NB_LINE&quot;)).longValue());&#10;extracted.put(&quot;assureplus:customers&quot;, ((Number) globalMap.get(&quot;tMSSqlInput_customers_NB_LINE&quot;)).longValue());&#10;extracted.put(&quot;assureplus:contracts&quot;, ((Number) globalMap.get(&quot;tMSSqlInput_contracts_NB_LINE&quot;)).longValue());&#10;extracted.put(&quot;assureplus:claims&quot;, ((Number) globalMap.get(&quot;tMSSqlInput_claims_NB_LINE&quot;)).longValue());&#10;extracted.put(&quot;assureplus:payments&quot;, ((Number) globalMap.get(&quot;tMSSqlInput_payments_NB_LINE&quot;)).longValue());&#10;((routines.AbAssuranceKafka) globalMap.get(&quot;publisher&quot;)).completed(extracted);"/>
+
+  </node>
+  <node componentName="tPostjob" componentVersion="0.102" posX="120" posY="1780">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="tPostjob_Close"/>
+
+
+  </node>
+  <node componentName="tJava" componentVersion="0.102" posX="480" posY="1780">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="tJava_Close"/>
+    <elementParameter field="MEMO_JAVA" name="CODE" value="if (globalMap.get(&quot;publisher&quot;) != null) { ((routines.AbAssuranceKafka) globalMap.get(&quot;publisher&quot;)).close(); }"/>
+
+  </node>
+  <connection connectorName="SUBJOB_OK" label="next_abassurance_customers" lineStyle="1" metaname="next_abassurance_customers" offsetLabelX="0" offsetLabelY="0" source="tJava_Setup" target="tOracleInput_customers">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="next_abassurance_customers"/>
+  </connection>
+  <connection connectorName="FLOW" label="row_abassurance_customers" lineStyle="0" metaname="row_abassurance_customers" offsetLabelX="0" offsetLabelY="0" source="tOracleInput_customers" target="tJavaRow_abassurance_customers">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="row_abassurance_customers"/>
+  </connection>
+  <connection connectorName="SUBJOB_OK" label="next_abassurance_contracts" lineStyle="1" metaname="next_abassurance_contracts" offsetLabelX="0" offsetLabelY="0" source="tOracleInput_customers" target="tOracleInput_contracts">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="next_abassurance_contracts"/>
+  </connection>
+  <connection connectorName="FLOW" label="row_abassurance_contracts" lineStyle="0" metaname="row_abassurance_contracts" offsetLabelX="0" offsetLabelY="0" source="tOracleInput_contracts" target="tJavaRow_abassurance_contracts">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="row_abassurance_contracts"/>
+  </connection>
+  <connection connectorName="SUBJOB_OK" label="next_abassurance_claims" lineStyle="1" metaname="next_abassurance_claims" offsetLabelX="0" offsetLabelY="0" source="tOracleInput_contracts" target="tOracleInput_claims">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="next_abassurance_claims"/>
+  </connection>
+  <connection connectorName="FLOW" label="row_abassurance_claims" lineStyle="0" metaname="row_abassurance_claims" offsetLabelX="0" offsetLabelY="0" source="tOracleInput_claims" target="tJavaRow_abassurance_claims">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="row_abassurance_claims"/>
+  </connection>
+  <connection connectorName="SUBJOB_OK" label="next_abassurance_payments" lineStyle="1" metaname="next_abassurance_payments" offsetLabelX="0" offsetLabelY="0" source="tOracleInput_claims" target="tOracleInput_payments">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="next_abassurance_payments"/>
+  </connection>
+  <connection connectorName="FLOW" label="row_abassurance_payments" lineStyle="0" metaname="row_abassurance_payments" offsetLabelX="0" offsetLabelY="0" source="tOracleInput_payments" target="tJavaRow_abassurance_payments">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="row_abassurance_payments"/>
+  </connection>
+  <connection connectorName="SUBJOB_OK" label="next_assureplus_customers" lineStyle="1" metaname="next_assureplus_customers" offsetLabelX="0" offsetLabelY="0" source="tOracleInput_payments" target="tMSSqlInput_customers">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="next_assureplus_customers"/>
+  </connection>
+  <connection connectorName="FLOW" label="row_assureplus_customers" lineStyle="0" metaname="row_assureplus_customers" offsetLabelX="0" offsetLabelY="0" source="tMSSqlInput_customers" target="tJavaRow_assureplus_customers">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="row_assureplus_customers"/>
+  </connection>
+  <connection connectorName="SUBJOB_OK" label="next_assureplus_contracts" lineStyle="1" metaname="next_assureplus_contracts" offsetLabelX="0" offsetLabelY="0" source="tMSSqlInput_customers" target="tMSSqlInput_contracts">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="next_assureplus_contracts"/>
+  </connection>
+  <connection connectorName="FLOW" label="row_assureplus_contracts" lineStyle="0" metaname="row_assureplus_contracts" offsetLabelX="0" offsetLabelY="0" source="tMSSqlInput_contracts" target="tJavaRow_assureplus_contracts">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="row_assureplus_contracts"/>
+  </connection>
+  <connection connectorName="SUBJOB_OK" label="next_assureplus_claims" lineStyle="1" metaname="next_assureplus_claims" offsetLabelX="0" offsetLabelY="0" source="tMSSqlInput_contracts" target="tMSSqlInput_claims">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="next_assureplus_claims"/>
+  </connection>
+  <connection connectorName="FLOW" label="row_assureplus_claims" lineStyle="0" metaname="row_assureplus_claims" offsetLabelX="0" offsetLabelY="0" source="tMSSqlInput_claims" target="tJavaRow_assureplus_claims">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="row_assureplus_claims"/>
+  </connection>
+  <connection connectorName="SUBJOB_OK" label="next_assureplus_payments" lineStyle="1" metaname="next_assureplus_payments" offsetLabelX="0" offsetLabelY="0" source="tMSSqlInput_claims" target="tMSSqlInput_payments">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="next_assureplus_payments"/>
+  </connection>
+  <connection connectorName="FLOW" label="row_assureplus_payments" lineStyle="0" metaname="row_assureplus_payments" offsetLabelX="0" offsetLabelY="0" source="tMSSqlInput_payments" target="tJavaRow_assureplus_payments">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="row_assureplus_payments"/>
+  </connection>
+  <connection connectorName="SUBJOB_OK" label="completed" lineStyle="1" metaname="completed" offsetLabelX="0" offsetLabelY="0" source="tMSSqlInput_payments" target="tJava_Completed">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="completed"/>
+  </connection>
+  <connection connectorName="COMPONENT_OK" label="close" lineStyle="1" metaname="close" offsetLabelX="0" offsetLabelY="0" source="tPostjob_Close" target="tJava_Close">
+    <elementParameter field="TEXT" name="UNIQUE_NAME" value="close"/>
+  </connection>
+</talendfile:ProcessType>

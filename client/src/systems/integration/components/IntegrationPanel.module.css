@@ -1,0 +1,25 @@
+.panel {
+  margin-top: 2rem;
+}
+
+.form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.form input {
+  max-width: 100%;
+}
+
+.details {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1rem;
+}
+
+.details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
