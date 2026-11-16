@@ -17,8 +17,8 @@ def test_oracle_payment_mapping():
 
     result = map_payment(payment, "abassurance")
 
-    assert result["payment_id"] == "AB-500"
-    assert result["contract_id"] == "AB-CONT-001"
+    assert result["payment_id"] == "d76ce97d-3cd4-5c30-bb8b-2963fad067f4"
+    assert result["contract_id"] == "eefff547-f7ef-58e7-8290-39fd86bd4899"
     assert result["payment_date"] == "2025-04-15T00:00:00"
     assert result["amount"] == "250.50"
     assert result["payment_method"] == "VIREMENT"
@@ -40,11 +40,11 @@ def test_sqlserver_payment_mapping():
 
     result = map_payment(payment, "assureplus")
 
-    assert result["payment_id"] == f"AP-{payment_id}"
-    assert result["contract_id"] == "AP-CONT-001"
+    assert result["payment_id"] == "f8bd5dfd-10bb-51bb-b7fb-f0564fd04d68"
+    assert result["contract_id"] == "c648a223-b93a-5604-80f2-c9e6533def8e"
     assert result["amount"] == "150.00"
     assert result["payment_date"] == "2025-04-15T14:30:00"
-    assert result["transaction_status"] == "COMPLETED"
+    assert result["transaction_status"] == "TERMINE"
     assert set(result) == {field.name for field in fields(Payment)}
 
 

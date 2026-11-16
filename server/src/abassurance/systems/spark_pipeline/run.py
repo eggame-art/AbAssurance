@@ -3,13 +3,12 @@ import json
 import logging
 import os
 import sys
-from collections.abc import Iterator
-from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from abassurance.shared.errors import ConfigurationError
+from abassurance.shared.storage import state_lock, write_json_atomic
 from abassurance.systems.messaging.config import KafkaConfig, load_kafka_config
 
 if (TYPE_CHECKING):
@@ -38,48 +37,6 @@ def create_session(*, kafka: bool = True, master: str = "local[2]") -> "SparkSes
         builder = builder.config("spark.jars.packages", CONNECTOR)
 
     return builder.getOrCreate()
-
-
-@contextmanager
-def state_lock(state: Path) -> Iterator[None]:
-    state.mkdir(parents=True, exist_ok=True)
-
-    with (state / ".lock").open("a+b") as handle:
-        if handle.tell() == 0:
-            handle.write(b"0")
-            handle.flush()
-
-        handle.seek(0)
-
-        try:
-            if os.name == "nt":
-                import msvcrt
-
-                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
-            else:
-                import fcntl
-
-                fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-
-        except OSError as exc:
-            raise ConfigurationError("Spark state directory already in use") from exc
-
-        try:
-            yield
-
-        finally:
-            if os.name == "nt":
-                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
-            else:
-                fcntl.flock(handle, fcntl.LOCK_UN)
-
-
-def write_json_atomic(path: Path, value: dict) -> None:
-    temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
-
-    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-
-    temporary.replace(path)
 
 
 def bind_state(state: Path, config: KafkaConfig) -> None:

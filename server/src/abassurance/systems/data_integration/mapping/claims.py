@@ -7,6 +7,7 @@ from abassurance.systems.data_integration.mapping.fields import optional_text
 from abassurance.systems.data_integration.mapping.identifiers import make_id
 from abassurance.systems.data_integration.mapping.normalizers import (
     normalize_amount,
+    normalize_category,
     normalize_datetime,
     normalize_score,
 )
@@ -44,13 +45,13 @@ def map_claim(record: Mapping[str, Any], source: str) -> dict[str, Any]:
 
     return asdict(
         Claim(
-            claim_id=make_id(source, claim_id),
+            claim_id=make_id(source, claim_id, "claims"),
             source_system=source,
             source_id=str(claim_id),
-            contract_id=make_id(source, contract_ref),
+            contract_id=make_id(source, contract_ref, "contracts"),
             incident_date=normalize_datetime(record.get(fields["date"])),
             estimated_amount=normalize_amount(record.get(fields["amount"])),
-            claim_status=optional_text(record.get(fields["status"]), "claim_status"),
+            claim_status=normalize_category(record.get(fields["status"]), "claim_status"),
             description=optional_text(record.get(fields["description"]), "description"),
             fraud_score=normalize_score(record.get(score_field)) if score_field else None,
         )

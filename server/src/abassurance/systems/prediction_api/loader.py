@@ -5,11 +5,13 @@ from abassurance.systems.prediction_api.schemas import ModelInfo, PredictionRequ
 from abassurance.systems.prediction_api.service import PredictionService
 
 
-def load_service(config: APIConfig) -> PredictionService:
+def load_service(config: APIConfig, *, spark=None) -> PredictionService:
     from abassurance.systems.model_training.persistence import load_model
     from abassurance.systems.spark_pipeline.run import create_session
 
-    spark = create_session(kafka=False, master=config.spark_master)
+    owns_spark = spark is None
+    if owns_spark:
+        spark = create_session(kafka=False, master=config.spark_master)
 
     try:
         spark.sparkContext.setLogLevel("WARN")
@@ -34,8 +36,9 @@ def load_service(config: APIConfig) -> PredictionService:
         if info.status == "experimental" and (info.business_validated or not info.experimental_warning):
             raise ConfigurationError("Experimental models must retain their validation limits")
 
-        return PredictionService(spark, model, info)
+        return PredictionService(spark, model, info, owns_spark=owns_spark)
 
     except BaseException:
-        spark.stop()
+        if owns_spark:
+            spark.stop()
         raise

@@ -47,7 +47,7 @@ def predictive_records(contracts_per_source: int = 52, *, seed: int = 42) -> dic
                 prefix = f"PRED-V{GENERATOR_VERSION}-S{seed}-COHORT{cohort}"
                 reference = f"{prefix}-C{index:05d}"
                 customer_ref = f"{prefix}-U{index // 2:05d}"
-                contract_id = make_id(source, reference)
+                contract_id = make_id(source, reference, "contracts")
 
                 if index % 2 == 0:
                     customer_stress = behaviour.random()
@@ -55,7 +55,7 @@ def predictive_records(contracts_per_source: int = 52, *, seed: int = 42) -> dic
                     records["customers"].append(
                         {
                             **common,
-                            "customer_id": make_id(source, customer_ref),
+                            "customer_id": make_id(source, customer_ref, "customers"),
                             "source_id": customer_ref,
                             "available_at": f"{observation - timedelta(days=1500)}T00:00:00Z",
                         }
@@ -69,7 +69,7 @@ def predictive_records(contracts_per_source: int = 52, *, seed: int = 42) -> dic
                             **common,
                             "contract_id": contract_id,
                             "source_reference": reference,
-                            "customer_id": make_id(source, customer_ref),
+                            "customer_id": make_id(source, customer_ref, "customers"),
                             "start_date": str(start),
                             "coverage_end_date": None,
                             "available_at": f"{start}T00:00:00Z",
@@ -79,7 +79,7 @@ def predictive_records(contracts_per_source: int = 52, *, seed: int = 42) -> dic
                             "revision": 2,
                             "contract_id": contract_id,
                             "source_reference": reference,
-                            "customer_id": make_id(source, customer_ref),
+                            "customer_id": make_id(source, customer_ref, "customers"),
                             "start_date": str(start),
                             "coverage_end_date": str(horizon_end),
                             "available_at": f"{horizon_end + timedelta(days=1)}T00:00:00Z",
@@ -100,7 +100,7 @@ def predictive_records(contracts_per_source: int = 52, *, seed: int = 42) -> dic
                     records["payments"].append(
                         {
                             **common,
-                            "payment_id": make_id(source, payment_ref),
+                            "payment_id": make_id(source, payment_ref, "payments"),
                             "source_id": payment_ref,
                             "contract_id": contract_id,
                             "payment_date": str(paid),
@@ -118,7 +118,7 @@ def predictive_records(contracts_per_source: int = 52, *, seed: int = 42) -> dic
                     records["claims"].append(
                         {
                             **common,
-                            "claim_id": make_id(source, claim_ref),
+                            "claim_id": make_id(source, claim_ref, "claims"),
                             "source_id": claim_ref,
                             "contract_id": contract_id,
                             "incident_date": str(incident),
@@ -154,7 +154,7 @@ def predictive_records(contracts_per_source: int = 52, *, seed: int = 42) -> dic
                     records["cancellations"].append(
                         {
                             **common,
-                            "cancellation_id": make_id(source, cancellation_ref),
+                            "cancellation_id": make_id(source, cancellation_ref, "cancellations"),
                             "source_id": cancellation_ref,
                             "contract_id": contract_id,
                             "cancellation_date": str(effective),

@@ -17,20 +17,21 @@ def test_predictive_generator_is_reproducible_independent_and_explicitly_synthet
 
     for cohort, day in enumerate(OBSERVATIONS):
         marker = f"COHORT{cohort}-"
-        customers = {r["customer_id"] for r in records["customers"] if marker in r["customer_id"]}
+        customers = {r["customer_id"] for r in records["customers"] if marker in r["source_id"]}
 
         assert len(customers) == 52
 
         cohorts.append(customers)
+        contract_ids = {r["contract_id"] for r in records["contracts"] if marker in r["source_reference"]}
         observation = date.fromisoformat(day)
 
         for entity, field in (("payments", "payment_date"), ("claims", "incident_date")):
-            rows = [r for r in records[entity] if marker in r["contract_id"]]
+            rows = [r for r in records[entity] if r["contract_id"] in contract_ids]
 
             assert all(date.fromisoformat(r[field]) < observation for r in rows)
             assert all(datetime.fromisoformat(r["available_at"]).date() < observation for r in rows)
 
-        exits = [r for r in records["cancellations"] if marker in r["contract_id"]]
+        exits = [r for r in records["cancellations"] if r["contract_id"] in contract_ids]
 
         assert 0 < len(exits) < 104
         assert all(date.fromisoformat(r["cancellation_date"]) > observation for r in exits)

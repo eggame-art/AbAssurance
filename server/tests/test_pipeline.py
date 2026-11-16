@@ -44,7 +44,7 @@ def records(monkeypatch):
 def test_complete_pipeline_keeps_origins_and_exact_amounts(records, settings: Settings):
     data = run.run_pipeline(settings=settings)
 
-    assert {row["customer_id"] for row in data["customers"]} == {"AB-100", "AP-100"}
+    assert {row["customer_id"] for row in data["customers"]} == {"0ce23490-7b17-57a3-933d-829abb01a605", "3fff094d-64af-55c0-abc9-2e86a559959e"}
     assert {row["source_id"] for row in data["customers"]} == {"100"}
     assert {row["annual_premium"] for row in data["contracts"]} == {"1199.88"}
     assert data["payments"][1]["source_id"] == "123e4567-e89b-12d3-a456-426614174000"

@@ -20,8 +20,8 @@ def test_oracle_contract_mapping():
 
     result = map_contract(contract, "abassurance")
 
-    assert result["contract_id"] == "AB-CONT-001"
-    assert result["customer_id"] == "AB-100"
+    assert result["contract_id"] == "eefff547-f7ef-58e7-8290-39fd86bd4899"
+    assert result["customer_id"] == "0ce23490-7b17-57a3-933d-829abb01a605"
     assert result["product_type"] == "AUTO"
     assert result["annual_premium"] == "1200.00"
     assert result["agency_id"] == 10
@@ -43,8 +43,8 @@ def test_sqlserver_contract_mapping():
 
     result = map_contract(contract, "assureplus")
 
-    assert result["contract_id"] == "AP-CONT-001"
-    assert result["customer_id"] == "AP-100"
+    assert result["contract_id"] == "c648a223-b93a-5604-80f2-c9e6533def8e"
+    assert result["customer_id"] == "3fff094d-64af-55c0-abc9-2e86a559959e"
     assert result["annual_premium"] == "1200.00"
     assert result["broker_code"] == "BR-001"
     assert result["agency_id"] is None

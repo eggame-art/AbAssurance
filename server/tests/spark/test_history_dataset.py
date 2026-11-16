@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import pytest
 from abassurance.shared.errors import ConfigurationError
+from abassurance.systems.data_integration.mapping.identifiers import make_id
 from abassurance.systems.data_preparation.config import PreparationConfig
 from abassurance.systems.data_preparation.demo import DEMO_AS_OF_DATE, demo_frames, synthetic_records
 from abassurance.systems.data_preparation.run import prepare_dataset
@@ -53,7 +54,9 @@ def test_real_temporal_labels_censoring_and_point_in_time_versions(spark):
         for prefix in ("AB", "AP"):
 
             def row(index, prefix=prefix):
-                return rows[f"{prefix}-SYNTH-C{index:05d}"]
+                return rows[
+                    make_id("abassurance" if prefix == "AB" else "assureplus", f"SYNTH-C{index:05d}", "contracts")
+                ]
 
             assert row(0).is_cancelled == row(6).is_cancelled == 1
             assert row(1).is_cancelled == row(7).is_cancelled == row(12).is_cancelled == 0
@@ -72,7 +75,10 @@ def test_real_temporal_labels_censoring_and_point_in_time_versions(spark):
             assert row(10).eligibility_reason == "feature_history_incomplete"
 
             for index in (3, 4, 9, 11):
-                assert f"{prefix}-SYNTH-C{index:05d}" not in rows
+                assert (
+                    make_id("abassurance" if prefix == "AB" else "assureplus", f"SYNTH-C{index:05d}", "contracts")
+                    not in rows
+                )
 
         assert all(row.claim_count == row.payment_count == 1 for row in rows.values())
         assert all(row.payment_amount_known_total == Decimal("100.00") for row in rows.values())
@@ -96,9 +102,9 @@ def test_configurable_horizon_and_termination_definition(spark):
     try:
         rows = {row.contract_id: row for row in prepared.dataset.collect()}
 
-        assert rows["AB-SYNTH-C00000"].is_cancelled == 0
-        assert rows["AB-SYNTH-C00006"].is_cancelled is None
-        assert rows["AB-SYNTH-C00006"].label_status == "competing_exit"
+        assert rows["86251641-08bd-51df-a6d9-42633ee0011f"].is_cancelled == 0
+        assert rows["92f4ab95-20bc-5ba5-a3da-9d369d9d073f"].is_cancelled is None
+        assert rows["92f4ab95-20bc-5ba5-a3da-9d369d9d073f"].label_status == "competing_exit"
 
     finally:
         prepared.close()
@@ -154,9 +160,9 @@ def test_partial_followup_confirms_a_positive_but_never_manufactures_a_negative(
     try:
         rows = {row.contract_id: row for row in prepared.dataset.collect()}
 
-        assert rows["AB-SYNTH-C00000"].is_cancelled == 1
-        assert rows["AB-SYNTH-C00001"].is_cancelled is None
-        assert rows["AB-SYNTH-C00001"].label_status == "insufficient_followup"
+        assert rows["86251641-08bd-51df-a6d9-42633ee0011f"].is_cancelled == 1
+        assert rows["de750a2b-5173-5764-9606-78c62bfacfba"].is_cancelled is None
+        assert rows["de750a2b-5173-5764-9606-78c62bfacfba"].label_status == "insufficient_followup"
 
     finally:
         prepared.close()

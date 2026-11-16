@@ -5,7 +5,11 @@ from typing import Any
 from abassurance.shared.models.unified import Customer
 from abassurance.systems.data_integration.mapping.fields import optional_integer, optional_text
 from abassurance.systems.data_integration.mapping.identifiers import make_id
-from abassurance.systems.data_integration.mapping.normalizers import normalize_date, normalize_datetime
+from abassurance.systems.data_integration.mapping.normalizers import (
+    normalize_category,
+    normalize_date,
+    normalize_datetime,
+)
 
 CUSTOMER_FIELDS = {
     "abassurance": {
@@ -62,7 +66,7 @@ def map_customer(record: Mapping[str, Any], source: str) -> dict[str, Any]:
 
     return asdict(
         Customer(
-            customer_id=make_id(source, source_id),
+            customer_id=make_id(source, source_id, "customers"),
             source_system=source,
             source_id=str(source_id),
             full_name=full_name,
@@ -73,7 +77,7 @@ def map_customer(record: Mapping[str, Any], source: str) -> dict[str, Any]:
             postal_code=optional_text(record.get(fields["postal_code"]), "postal_code"),
             tax_number=optional_text(record.get(tax_field), "tax_number") if tax_field else None,
             created_at=normalize_datetime(record.get(fields["created_at"])),
-            customer_status=optional_text(record.get(fields["status"]), "customer_status"),
+            customer_status=normalize_category(record.get(fields["status"]), "customer_status"),
             loyalty_score=optional_integer(record.get(loyalty_field), "loyalty_score") if loyalty_field else None,
         )
     )

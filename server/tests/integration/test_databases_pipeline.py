@@ -107,18 +107,18 @@ def test_driver_types_and_fictional_transformations(raw_data, exports):
     _, data = exports
 
     customers = {row["customer_id"]: row for row in data["customers"]}
-    assert customers["AB-100"]["full_name"] == "Jean Dupont"
-    assert customers["AP-100"]["full_name"] == "Marie Martin"
-    assert customers["AB-100"]["source_id"] == customers["AP-100"]["source_id"] == "100"
-    assert customers["AB-100"]["birth_date"] == "1990-05-12"
+    assert customers["0ce23490-7b17-57a3-933d-829abb01a605"]["full_name"] == "Jean Dupont"
+    assert customers["3fff094d-64af-55c0-abc9-2e86a559959e"]["full_name"] == "Marie Martin"
+    assert customers["0ce23490-7b17-57a3-933d-829abb01a605"]["source_id"] == customers["3fff094d-64af-55c0-abc9-2e86a559959e"]["source_id"] == "100"
+    assert customers["0ce23490-7b17-57a3-933d-829abb01a605"]["birth_date"] == "1990-05-12"
 
     contracts = {row["contract_id"]: row for row in data["contracts"]}
-    assert contracts["AB-AB-AUTO-001"]["annual_premium"] == "1200.00"
-    assert contracts["AP-AP-AUTO-001"]["annual_premium"] == "1200.00"
+    assert contracts["208bea4b-6ddd-56d6-921a-ee89bfd4a4e7"]["annual_premium"] == "1200.00"
+    assert contracts["30eadb86-10c5-5322-a97d-68a205673434"]["annual_premium"] == "1200.00"
 
     claims = {row["claim_id"]: row for row in data["claims"]}
-    assert claims["AP-1000"]["incident_date"] == "2025-03-10T14:30:00"
-    assert claims["AP-1000"]["fraud_score"] == "12.50"
+    assert claims["a5207183-f805-58b9-8a41-e30d5670552b"]["incident_date"] == "2025-03-10T14:30:00"
+    assert claims["a5207183-f805-58b9-8a41-e30d5670552b"]["fraud_score"] == "12.50"
 
 
 def test_relationships_stay_in_the_same_company(exports):

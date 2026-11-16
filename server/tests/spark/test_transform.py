@@ -123,7 +123,7 @@ def test_invalid_rows_cascade_and_corrections_are_not_hidden_by_duplicates(spark
         assert any("Orphan customer_id" in reason for reason in reasons)
         assert any("Orphan contract_id" in reason for reason in reasons)
 
-        assert {row["contract_id"] for row in actual["contracts"]} == {"AB-C-100", "AP-C-101"}
+        assert {row["contract_id"] for row in actual["contracts"]} == {"9411294f-5a8b-53fd-a585-857906e1a028", "700ac77b-70ea-5fa3-9de1-c2e95326af48"}
 
     finally:
         snapshot.close()

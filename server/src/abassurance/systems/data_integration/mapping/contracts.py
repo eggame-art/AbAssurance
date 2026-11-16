@@ -5,7 +5,11 @@ from typing import Any
 from abassurance.shared.models.unified import Contract
 from abassurance.systems.data_integration.mapping.fields import optional_integer, optional_text
 from abassurance.systems.data_integration.mapping.identifiers import make_id
-from abassurance.systems.data_integration.mapping.normalizers import normalize_amount, normalize_date
+from abassurance.systems.data_integration.mapping.normalizers import (
+    normalize_amount,
+    normalize_category,
+    normalize_date,
+)
 
 CONTRACT_FIELDS = {
     "abassurance": {
@@ -47,18 +51,15 @@ def map_contract(record: Mapping[str, Any], source: str) -> dict[str, Any]:
 
     return asdict(
         Contract(
-            contract_id=make_id(source, reference),
+            contract_id=make_id(source, reference, "contracts"),
             source_system=source,
             source_reference=str(reference),
-            customer_id=make_id(source, customer_id),
-            product_type=optional_text(record.get(fields["product"]), "product_type"),
+            customer_id=make_id(source, customer_id, "customers"),
+            product_type=normalize_category(record.get(fields["product"]), "product_type"),
             start_date=normalize_date(record.get(fields["start_date"])),
             end_date=normalize_date(record.get(fields["end_date"])),
-            annual_premium=normalize_amount(
-                record.get(fields["premium"]),
-                multiplier=fields["premium_multiplier"],
-            ),
-            contract_status=optional_text(record.get(fields["status"]), "contract_status"),
+            annual_premium=normalize_amount(record.get(fields["premium"]), multiplier=fields["premium_multiplier"]),
+            contract_status=normalize_category(record.get(fields["status"]), "contract_status"),
             agency_id=optional_integer(record.get(agency_field), "agency_id") if agency_field else None,
             broker_code=optional_text(record.get(broker_field), "broker_code") if broker_field else None,
         )

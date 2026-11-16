@@ -4,7 +4,7 @@ from pyspark import StorageLevel
 from pyspark.sql import DataFrame, Window
 from pyspark.sql import functions as F
 
-from abassurance.systems.data_integration.mapping.identifiers import SOURCE_PREFIXES
+from abassurance.systems.data_integration.mapping.identifiers import matches_identity
 from abassurance.systems.data_integration.pipeline.validation import ID_FIELDS, RELATIONSHIPS
 from abassurance.systems.data_preparation.config import FEATURE_COLUMNS
 
@@ -36,13 +36,11 @@ class PreparedDataset:
         identifier = ID_FIELDS[entity]
         self.input_counts[entity] = frame.count()
 
-        prefix = F.create_map(*[F.lit(value) for pair in SOURCE_PREFIXES.items() for value in pair])
-
         reference = F.col("source_reference" if entity == "contracts" else "source_id")
 
-        valid_identity = (F.length(F.trim(reference)) > 0) & (
-            F.col(identifier) == F.concat(prefix[F.col("source_system")], F.lit("-"), reference)
-        )
+        valid_identity = F.udf(
+            lambda source, ref, key: matches_identity(source, ref, key, entity, allow_legacy=True), "boolean"
+        )("source_system", reference, identifier)
 
         duplicates = F.count(F.lit(1)).over(Window.partitionBy(identifier))
 

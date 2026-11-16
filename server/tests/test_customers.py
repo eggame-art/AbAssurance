@@ -16,7 +16,7 @@ def test_oracle_customer_mapping():
 
     result = map_customer(customer, "abassurance")
 
-    assert result["customer_id"] == "AB-100"
+    assert result["customer_id"] == "0ce23490-7b17-57a3-933d-829abb01a605"
     assert result["full_name"] == "Jean Dupont"
     assert result["birth_date"] == "1990-05-12"
     assert set(result) == {field.name for field in fields(Customer)}
@@ -32,7 +32,7 @@ def test_sqlserver_customer_mapping():
 
     result = map_customer(customer, "assureplus")
 
-    assert result["customer_id"] == "AP-100"
+    assert result["customer_id"] == "3fff094d-64af-55c0-abc9-2e86a559959e"
     assert result["full_name"] == "Marie Martin"
     assert result["birth_date"] == "1985-02-20"
     assert set(result) == {field.name for field in fields(Customer)}
@@ -55,7 +55,7 @@ def test_complete_oracle_customer():
 
     result = map_customer(customer, "abassurance")
 
-    assert result["customer_id"] == "AB-100"
+    assert result["customer_id"] == "0ce23490-7b17-57a3-933d-829abb01a605"
     assert result["source_system"] == "abassurance"
     assert result["source_id"] == "100"
     assert result["full_name"] == "Jean Dupont"

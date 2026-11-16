@@ -35,10 +35,7 @@ class Settings:
     output_dir: Path
 
 
-def load_settings(env_file: Path | None = None) -> Settings:
-    path = env_file if env_file is not None else PROJECT_ROOT / ".env"
-    env = Environment.from_file(path)
-
+def load_oracle_config(env: Environment) -> OracleConfig:
     timeout = env.integer("DB_CONNECT_TIMEOUT", "10", 300)
     oracle_port = env.integer("ORACLE_PORT", "1521", 65535)
 
@@ -46,28 +43,34 @@ def load_settings(env_file: Path | None = None) -> Settings:
         f"{env.get('ORACLE_HOST', '127.0.0.1')}:{oracle_port}/{env.get('ORACLE_SERVICE', 'FREEPDB1')}"
     )
 
+    return OracleConfig(
+        user=env.get("ORACLE_USER", "ABASSURANCE"),
+        password=env.required("ORACLE_APP_PASSWORD"),
+        dsn=oracle_dsn,
+        timeout=timeout,
+    )
+
+
+def load_sqlserver_config(env: Environment) -> SQLServerConfig:
+    return SQLServerConfig(
+        host=env.get("SQLSERVER_HOST", "127.0.0.1"),
+        port=env.integer("SQLSERVER_PORT", "1433", 65535),
+        database=env.get("SQLSERVER_DATABASE", "AssurePlus"),
+        user=env.get("SQLSERVER_USER", "sa"),
+        password=env.required("SQLSERVER_PASSWORD", env.get("MSSQL_SA_PASSWORD")),
+        driver=env.get("SQLSERVER_DRIVER", "ODBC Driver 18 for SQL Server"),
+        encrypt=env.boolean("SQLSERVER_ENCRYPT", "yes"),
+        trust_server_certificate=env.boolean("SQLSERVER_TRUST_CERTIFICATE", "no"),
+        timeout=env.integer("DB_CONNECT_TIMEOUT", "10", 300),
+    )
+
+
+def load_settings(env_file: Path | None = None) -> Settings:
+    path = env_file if env_file is not None else PROJECT_ROOT / ".env"
+    env = Environment.from_file(path)
     output_dir = Path(env.get("PIPELINE_OUTPUT_DIR", "data/processed")).expanduser()
 
     if not output_dir.is_absolute():
         output_dir = PROJECT_ROOT / output_dir
 
-    return Settings(
-        oracle=OracleConfig(
-            user=env.get("ORACLE_USER", "ABASSURANCE"),
-            password=env.required("ORACLE_APP_PASSWORD"),
-            dsn=oracle_dsn,
-            timeout=timeout,
-        ),
-        sqlserver=SQLServerConfig(
-            host=env.get("SQLSERVER_HOST", "127.0.0.1"),
-            port=env.integer("SQLSERVER_PORT", "1433", 65535),
-            database=env.get("SQLSERVER_DATABASE", "AssurePlus"),
-            user=env.get("SQLSERVER_USER", "sa"),
-            password=env.required("SQLSERVER_PASSWORD", env.get("MSSQL_SA_PASSWORD")),
-            driver=env.get("SQLSERVER_DRIVER", "ODBC Driver 18 for SQL Server"),
-            encrypt=env.boolean("SQLSERVER_ENCRYPT", "yes"),
-            trust_server_certificate=env.boolean("SQLSERVER_TRUST_CERTIFICATE", "no"),
-            timeout=timeout,
-        ),
-        output_dir=output_dir,
-    )
+    return Settings(oracle=load_oracle_config(env), sqlserver=load_sqlserver_config(env), output_dir=output_dir)

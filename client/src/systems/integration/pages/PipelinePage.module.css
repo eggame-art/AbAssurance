@@ -1,0 +1,23 @@
+.tableContainer {
+  margin-top: 1.5rem;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.table caption {
+  margin-bottom: 0.75rem;
+  text-align: left;
+  font-weight: 700;
+}
+
+.table th,
+.table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #ccc;
+  vertical-align: top;
+}

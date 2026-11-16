@@ -76,7 +76,7 @@ services:
       - .:/app
 
   kafka:
-    profiles: ["kafka", "spark", "hdfs"]
+    profiles: ["kafka", "spark", "hdfs", "talaxie"]
     image: apache/kafka:4.1.2
     environment:
       KAFKA_NODE_ID: "1"
@@ -116,6 +116,31 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
+
+  talaxie-publish:
+    profiles: ["talaxie"]
+    image: abassurance-talaxie:9.0.2
+    platform: linux/amd64
+    build:
+      context: ./Infrastructure/talaxie
+    env_file: .env
+    environment:
+      ORACLE_HOST: oracle
+      ORACLE_PORT: "1521"
+      SQLSERVER_HOST: sqlserver
+      SQLSERVER_PORT: "1433"
+      SQLSERVER_TRUST_CERTIFICATE: ${SQLSERVER_TRUST_CERTIFICATE:-yes}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+    depends_on:
+      oracle:
+        condition: service_healthy
+      sqlserver:
+        condition: service_healthy
+      sqlserver-init:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+    restart: "no"
 
   kafka-consume:
     profiles: ["kafka"]

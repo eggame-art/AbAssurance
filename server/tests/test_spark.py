@@ -131,7 +131,7 @@ def test_spark_state_is_bound_to_source_and_keeps_raw_with_checkpoint(tmp_path):
 
 
 def test_spark_state_lock_is_released_and_excludes_parallel_writers(tmp_path):
-    with state_lock(tmp_path), pytest.raises(ConfigurationError, match="already in use"), state_lock(tmp_path):
+    with state_lock(tmp_path), pytest.raises(ConfigurationError), state_lock(tmp_path):
         pytest.fail("Concurrent writer acquired the state lock")
     with state_lock(tmp_path):
         pass

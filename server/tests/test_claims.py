@@ -17,8 +17,8 @@ def test_oracle_claim_mapping():
 
     result = map_claim(claim, "abassurance")
 
-    assert result["claim_id"] == "AB-50"
-    assert result["contract_id"] == "AB-CONT-001"
+    assert result["claim_id"] == "3c93392c-3f34-56a5-8713-e7a22540c9d9"
+    assert result["contract_id"] == "eefff547-f7ef-58e7-8290-39fd86bd4899"
     assert result["incident_date"] == "2025-03-15T14:30:00"
     assert result["estimated_amount"] == "1500.50"
     assert result["claim_status"] == "OUVERT"
@@ -39,10 +39,10 @@ def test_sqlserver_claim_mapping():
 
     result = map_claim(claim, "assureplus")
 
-    assert result["claim_id"] == "AP-50"
-    assert result["contract_id"] == "AP-CONT-001"
+    assert result["claim_id"] == "0be578dc-4ab8-55c7-8ccc-fa4f28fd906d"
+    assert result["contract_id"] == "c648a223-b93a-5604-80f2-c9e6533def8e"
     assert result["estimated_amount"] == "2500.00"
-    assert result["claim_status"] == "OPEN"
+    assert result["claim_status"] == "OUVERT"
     assert result["fraud_score"] == "75.50"
     assert set(result) == {field.name for field in fields(Claim)}
 
