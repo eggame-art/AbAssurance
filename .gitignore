@@ -24,9 +24,19 @@ logs/
 
 data/raw/
 data/processed/
+data/spark/
 
 models/*.pkl
 models/*.joblib
 
 .DS_Store
 Thumbs.db
+
+node_modules/
+.npm-cache/
+client/dist/
+.tools/
+
+auth-demo-credentials.txt
+*.sqlite
+*.sqlite-*

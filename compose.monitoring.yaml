@@ -1,0 +1,55 @@
+services:
+  frontend:
+    profiles: ["api"]
+    image: abassurance-frontend
+    ports:
+      - "127.0.0.1:5173:80"
+    volumes:
+      - ./client/dist:/usr/share/nginx/html:ro
+    restart: unless-stopped
+
+  prediction-api:
+    image: abassurance-web-pipeline:local
+    build:
+      context: .
+      dockerfile: server/Dockerfile.pipeline
+    command:
+      - python
+      - -m
+      - uvicorn
+      - abassurance.systems.monitoring.app:create_app
+      - --factory
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+    environment:
+      PYTHONPATH: /app/server/src
+      ORACLE_HOST: oracle
+      ORACLE_PORT: "1521"
+      ORACLE_DSN: oracle:1521/${ORACLE_SERVICE:-FREEPDB1}
+      SQLSERVER_HOST: sqlserver
+      SQLSERVER_PORT: "1433"
+      SQLSERVER_TRUST_CERTIFICATE: ${SQLSERVER_TRUST_CERTIFICATE:-yes}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+      HDFS_HTTP_URL: http://namenode:9870
+      SOURCE_DATA_KIND: demo
+      API_ALLOW_EXPERIMENTAL: "true"
+      INTEGRATION_STATE_DIR: /var/lib/abassurance/integrations
+      INTEGRATION_HDFS_ROOT: hdfs://namenode:9000/abassurance-web
+    volumes:
+      - spark-ivy:/root/.ivy2
+      - pipeline-runs:/var/lib/abassurance
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/openapi.json', timeout=5)"
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  pipeline-runs:

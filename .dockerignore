@@ -10,4 +10,12 @@ __pycache__
 .coverage
 htmlcov
 data
-database
+Infrastructure/database
+.tools
+**/node_modules
+**/.npm-cache
+client/dist
+
+auth-demo-credentials.txt
+*.sqlite
+*.sqlite-*

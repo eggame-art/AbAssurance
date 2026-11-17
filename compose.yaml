@@ -12,7 +12,7 @@ services:
       - "127.0.0.1:${ORACLE_PORT:-1521}:1521"
     volumes:
       - oracle-data:/opt/oracle/oradata
-      - ./database/oracle/init:/container-entrypoint-initdb.d:ro
+      - ./Infrastructure/database/oracle/init:/container-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD", "healthcheck.sh"]
       interval: 10s
@@ -51,13 +51,13 @@ services:
     environment:
       SQLCMDPASSWORD: ${MSSQL_SA_PASSWORD:?Required}
     volumes:
-      - ./database/sqlserver/init:/init:ro
+      - ./Infrastructure/database/sqlserver/init:/init:ro
     entrypoint: ["/bin/bash", "/init/init.sh"]
     restart: "no"
 
   pipeline:
     profiles: ["tools"]
-    build: .
+    build: {context: ., dockerfile: server/Dockerfile}
     env_file: .env
     environment:
       ORACLE_DSN: oracle:1521/${ORACLE_SERVICE:-FREEPDB1}
@@ -75,6 +75,248 @@ services:
     volumes:
       - .:/app
 
+  kafka:
+    profiles: ["kafka", "spark", "hdfs", "hop"]
+    image: apache/kafka:4.1.2
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: INTERNAL://:19092,EXTERNAL://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:19092,EXTERNAL://127.0.0.1:${KAFKA_PORT:-9092}
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      CLUSTER_ID: 4L6g3nShT-eMCtK--X86sw
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: "0"
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: "1"
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: "1"
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    ports:
+      - "127.0.0.1:${KAFKA_PORT:-9092}:9092"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD", "/opt/kafka/bin/kafka-topics.sh", "--bootstrap-server", "localhost:19092", "--list"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  kafka-publish:
+    extends:
+      service: pipeline
+    profiles: ["kafka"]
+    command: ["python", "-m", "abassurance.systems.messaging.producer"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+    depends_on:
+      kafka:
+        condition: service_healthy
+
+  hop-publish:
+    profiles: ["hop"]
+    image: abassurance-hop:2.20.0
+    platform: linux/amd64
+    build:
+      context: ./Infrastructure/hop
+    env_file: .env
+    environment:
+      ORACLE_HOST: oracle
+      ORACLE_PORT: "1521"
+      SQLSERVER_HOST: sqlserver
+      SQLSERVER_PORT: "1433"
+      SQLSERVER_TRUST_CERTIFICATE: ${SQLSERVER_TRUST_CERTIFICATE:-yes}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+    depends_on:
+      oracle:
+        condition: service_healthy
+      sqlserver:
+        condition: service_healthy
+      sqlserver-init:
+        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
+    restart: "no"
+
+  kafka-consume:
+    profiles: ["kafka"]
+    build: {context: ., dockerfile: server/Dockerfile}
+    env_file: .env
+    command: ["python", "-m", "abassurance.systems.messaging.consumer"]
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - .:/app
+
+  spark: &spark-service
+    profiles: ["spark"]
+    build:
+      context: .
+      dockerfile: server/Dockerfile.spark
+    env_file: .env
+    environment: &spark-environment
+      KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+      ORACLE_DSN: oracle:1521/${ORACLE_SERVICE:-FREEPDB1}
+      SQLSERVER_HOST: sqlserver
+      SQLSERVER_PORT: "1433"
+      SQLSERVER_TRUST_CERTIFICATE: ${SQLSERVER_TRUST_CERTIFICATE:-yes}
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - spark-ivy:/root/.ivy2
+
+  namenode:
+    profiles: ["hdfs", "api"]
+    image: apache/hadoop:3.3.6
+    hostname: namenode
+    user: root
+    environment:
+      HADOOP_HOME: /opt/hadoop
+      HADOOP_CONF_DIR: /opt/hadoop/etc/hadoop
+    entrypoint: ["/bin/bash", "/hadoop-start.sh"]
+    command: ["namenode"]
+    ports:
+      - "127.0.0.1:${HDFS_NAMENODE_UI_PORT:-9870}:9870"
+    volumes:
+      - hdfs-namenode:/hadoop/dfs/name
+      - ./Infrastructure/hadoop/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
+      - ./Infrastructure/hadoop/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
+      - ./Infrastructure/hadoop/start.sh:/hadoop-start.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "hdfs dfs -ls / > /dev/null"]
+      interval: 10s
+      timeout: 10s
+      retries: 18
+      start_period: 30s
+    restart: unless-stopped
+
+  datanode:
+    profiles: ["hdfs", "api"]
+    image: apache/hadoop:3.3.6
+    hostname: datanode
+    user: root
+    environment:
+      HADOOP_HOME: /opt/hadoop
+      HADOOP_CONF_DIR: /opt/hadoop/etc/hadoop
+    entrypoint: ["/bin/bash", "/hadoop-start.sh"]
+    command: ["datanode"]
+    depends_on:
+      namenode:
+        condition: service_healthy
+    volumes:
+      - hdfs-datanode:/hadoop/dfs/data
+      - ./Infrastructure/hadoop/core-site.xml:/opt/hadoop/etc/hadoop/core-site.xml:ro
+      - ./Infrastructure/hadoop/hdfs-site.xml:/opt/hadoop/etc/hadoop/hdfs-site.xml:ro
+      - ./Infrastructure/hadoop/start.sh:/hadoop-start.sh:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "hdfs dfsadmin -report -live | grep -q 'Live datanodes (1)' && hdfs dfsadmin -safemode get | grep -q 'OFF'"
+      interval: 10s
+      timeout: 10s
+      retries: 18
+      start_period: 30s
+    restart: unless-stopped
+
+  spark-hdfs:
+    <<: *spark-service
+    profiles: ["hdfs"]
+    environment:
+      <<: *spark-environment
+      SPARK_STATE_DIR: ${HDFS_STATE_DIR:-hdfs://namenode:9000/abassurance}
+      HADOOP_CONF_DIR: /opt/hadoop-conf
+    depends_on:
+      kafka:
+        condition: service_healthy
+      namenode:
+        condition: service_healthy
+      datanode:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - spark-ivy:/root/.ivy2
+      - ./Infrastructure/hadoop/spark-core-site.xml:/opt/hadoop-conf/core-site.xml:ro
+      - ./Infrastructure/hadoop/hdfs-site.xml:/opt/hadoop-conf/hdfs-site.xml:ro
+
+  prepare-dataset:
+    <<: *spark-service
+    profiles: ["hdfs"]
+    command: ["python", "-m", "abassurance.systems.data_preparation.run"]
+    environment:
+      SPARK_STATE_DIR: ${HDFS_STATE_DIR:-hdfs://namenode:9000/abassurance}
+      DATASET_OUTPUT_DIR: ${DATASET_OUTPUT_DIR:-hdfs://namenode:9000/abassurance-datasets/churn}
+      HADOOP_CONF_DIR: /opt/hadoop-conf
+    depends_on:
+      namenode:
+        condition: service_healthy
+      datanode:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - ./Infrastructure/hadoop/spark-core-site.xml:/opt/hadoop-conf/core-site.xml:ro
+      - ./Infrastructure/hadoop/hdfs-site.xml:/opt/hadoop-conf/hdfs-site.xml:ro
+
+  train-model:
+    <<: *spark-service
+    profiles: ["hdfs"]
+    command: ["python", "-m", "abassurance.systems.model_training.run"]
+    environment:
+      DATASET_OUTPUT_DIR: ${DATASET_OUTPUT_DIR:-hdfs://namenode:9000/abassurance-datasets/churn}
+      MODEL_OUTPUT_DIR: ${MODEL_OUTPUT_DIR:-hdfs://namenode:9000/abassurance-models/churn}
+      HADOOP_CONF_DIR: /opt/hadoop-conf
+    depends_on:
+      namenode:
+        condition: service_healthy
+      datanode:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - ./Infrastructure/hadoop/spark-core-site.xml:/opt/hadoop-conf/core-site.xml:ro
+      - ./Infrastructure/hadoop/hdfs-site.xml:/opt/hadoop-conf/hdfs-site.xml:ro
+
+  prediction-api:
+    <<: *spark-service
+    profiles: ["api"]
+    command: ["python", "-m", "uvicorn", "abassurance.systems.prediction_api.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+    environment:
+      MODEL_OUTPUT_DIR: ${MODEL_OUTPUT_DIR:-hdfs://namenode:9000/abassurance-models/churn}
+      API_MODEL_ID: ${API_MODEL_ID:-}
+      API_ALLOW_EXPERIMENTAL: ${API_ALLOW_EXPERIMENTAL:-false}
+      API_SPARK_MASTER: ${API_SPARK_MASTER:-local[2]}
+      HADOOP_CONF_DIR: /opt/hadoop-conf
+    ports:
+      - "127.0.0.1:${API_PORT:-8000}:8000"
+    depends_on:
+      namenode:
+        condition: service_healthy
+      datanode:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - ./Infrastructure/hadoop/spark-core-site.xml:/opt/hadoop-conf/core-site.xml:ro
+      - ./Infrastructure/hadoop/hdfs-site.xml:/opt/hadoop-conf/hdfs-site.xml:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    stop_grace_period: 60s
+    restart: unless-stopped
+
 volumes:
   oracle-data:
   sqlserver-data:
+  kafka-data:
+  spark-ivy:
+  hdfs-namenode:
+  hdfs-datanode:

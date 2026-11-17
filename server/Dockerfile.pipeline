@@ -1,0 +1,14 @@
+﻿FROM abassurance-hop:2.20.0 AS etl
+FROM eclipse-temurin:21-jdk-jammy AS hop-java
+FROM abassurance-prediction-api:latest
+
+COPY --from=etl /opt/hop /opt/hop
+COPY --from=hop-java /opt/java/openjdk /opt/hop-java
+COPY server/src /app/server/src
+
+ENV PYTHONPATH=/app/server/src
+ENV HOP_HOME=/opt/hop
+ENV HOP_PROJECT_DIR=/opt/hop/project
+ENV HOP_CONFIG_FOLDER=/opt/hop/config
+ENV HOP_JAVA_HOME=/opt/hop-java
+ENV HOP_OPTIONS="-Xmx512m -Djava.awt.headless=true -Duser.timezone=UTC -Dfile.encoding=UTF-8"

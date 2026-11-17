@@ -1,0 +1,14 @@
+.navigation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.5rem;
+}
+
+.navigation a {
+  color: #164e91;
+}
+
+.navigation a[aria-current="page"] {
+  color: inherit;
+  font-weight: 700;
+}

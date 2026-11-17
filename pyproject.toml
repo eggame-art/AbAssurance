@@ -9,25 +9,43 @@ dependencies = [
     "oracledb>=2.0",
     "pyodbc>=5.0",
     "python-dotenv>=1.0",
+    "confluent-kafka>=2.6,<3",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "ruff>=0.9"]
+dev = ["pytest>=8", "ruff>=0.9", "httpx>=0.27,<1"]
+spark = ["pyspark==3.5.8", "numpy>=1.24,<3"]
+api = ["fastapi>=0.115,<1", "pydantic>=2.9,<3", "uvicorn>=0.30,<1"]
 
 [project.scripts]
-abassurance-pipeline = "pipeline.run:main"
+abassurance-pipeline = "abassurance.systems.data_integration.pipeline.run:main"
+abassurance-kafka-publish = "abassurance.systems.messaging.producer:main"
+abassurance-kafka-consume = "abassurance.systems.messaging.consumer:main"
+abassurance-spark = "abassurance.systems.spark_pipeline.run:main"
+abassurance-prepare-dataset = "abassurance.systems.data_preparation.run:main"
+abassurance-history-import = "abassurance.systems.data_preparation.history:main"
+abassurance-history-demo = "abassurance.systems.data_preparation.demo:main"
+abassurance-train-model = "abassurance.systems.model_training.run:main"
 
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["server/src"]
+include = ["abassurance*"]
 
 [tool.pytest.ini_options]
-pythonpath = ["src"]
-testpaths = ["tests"]
-markers = ["integration: tests en lecture seule sur les deux bases Docker"]
+pythonpath = ["server/src"]
+testpaths = ["server/tests"]
+markers = [
+    "test",
+    "integration: requires Oracle and SQL Server",
+    "kafka_integration: requires databases and Kafka",
+    "spark_integration: requires PySpark and Java",
+    "spark_kafka_integration: requires PySpark, Java, databases and Kafka",
+    "hdfs_integration: requires Spark and Docker HDFS",
+]
 
 [tool.ruff]
 line-length = 88

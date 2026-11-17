@@ -1,0 +1,143 @@
+<?xml version='1.0' encoding='utf-8'?>
+<pipeline>
+  <info>
+    <name>assureplus_claims</name>
+    <pipeline_type>Normal</pipeline_type>
+  </info>
+  <order>
+    <hop>
+      <from>Read source</from>
+      <to>Publish Kafka</to>
+      <enabled>Y</enabled>
+    </hop>
+    <hop>
+      <from>Count source</from>
+      <to>Write count</to>
+      <enabled>Y</enabled>
+    </hop>
+  </order>
+  <transform>
+    <name>Read source</name>
+    <type>TableInput</type>
+    <copies>1</copies>
+    <distribute>Y</distribute>
+    <GUI>
+      <xloc>100</xloc>
+      <yloc>100</yloc>
+    </GUI>
+    <connection>sqlserver</connection>
+    <sql>SELECT CONCAT('assureplus:claims:', CONVERT(VARCHAR(100), AP_SINISTRE_NUM)) AS message_key, (SELECT 'assureplus' AS source_system, 'claims' AS entity, JSON_QUERY((SELECT t.AP_SINISTRE_NUM, t.AP_CONTRACT_REF, t.AP_INCIDENT_DATE, t.AP_ESTIMATED_AMOUNT, t.AP_CLAIM_STATUS, t.AP_CLAIM_COMMENT, t.AP_FRAUD_SCORE FOR JSON PATH, INCLUDE_NULL_VALUES, WITHOUT_ARRAY_WRAPPER)) AS data FOR JSON PATH, WITHOUT_ARRAY_WRAPPER) AS message_value FROM dbo.AP_CLAIMS t ORDER BY AP_SINISTRE_NUM</sql>
+    <limit>0</limit>
+    <variables_active>N</variables_active>
+    <execute_each_row>N</execute_each_row>
+    <use_named_parameters>N</use_named_parameters>
+  </transform>
+  <transform>
+    <name>Count source</name>
+    <type>TableInput</type>
+    <copies>1</copies>
+    <distribute>Y</distribute>
+    <GUI>
+      <xloc>100</xloc>
+      <yloc>250</yloc>
+    </GUI>
+    <connection>sqlserver</connection>
+    <sql>SELECT COUNT(*) AS "expected_count" FROM dbo.AP_CLAIMS</sql>
+    <limit>0</limit>
+    <variables_active>N</variables_active>
+    <execute_each_row>N</execute_each_row>
+    <use_named_parameters>N</use_named_parameters>
+  </transform>
+  <transform>
+    <name>Publish Kafka</name>
+    <type>KafkaProducerOutput</type>
+    <copies>1</copies>
+    <distribute>Y</distribute>
+    <GUI>
+      <xloc>400</xloc>
+      <yloc>100</yloc>
+    </GUI>
+    <directBootstrapServers>${KAFKA_BOOTSTRAP_SERVERS}</directBootstrapServers>
+    <topic>${KAFKA_TOPIC_PREFIX}.assureplus.claims</topic>
+    <keyField>message_key</keyField>
+    <messageField>message_value</messageField>
+    <options>
+      <option>
+        <property>acks</property>
+        <value>all</value>
+      </option>
+      <option>
+        <property>enable.idempotence</property>
+        <value>true</value>
+      </option>
+      <option>
+        <property>delivery.timeout.ms</property>
+        <value>30000</value>
+      </option>
+      <option>
+        <property>request.timeout.ms</property>
+        <value>10000</value>
+      </option>
+      <option>
+        <property>max.block.ms</property>
+        <value>30000</value>
+      </option>
+    </options>
+  </transform>
+  <transform>
+    <name>Write count</name>
+    <type>TextFileOutput</type>
+    <description />
+    <distribute>Y</distribute>
+    <custom_distribution />
+    <copies>1</copies>
+    <partitioning>
+      <method>none</method>
+      <schema_name />
+    </partitioning>
+    <separator>,</separator>
+    <enclosure />
+    <enclosure_forced>N</enclosure_forced>
+    <enclosure_fix_disabled>N</enclosure_fix_disabled>
+    <header>N</header>
+    <footer>N</footer>
+    <format>UNIX</format>
+    <compression>None</compression>
+    <encoding>UTF-8</encoding>
+    <endedLine />
+    <fileNameInField>N</fileNameInField>
+    <fileNameField />
+    <create_parent_folder>Y</create_parent_folder>
+    <file>
+      <name>${HOP_COUNTS_DIR}/assureplus_claims</name>
+      <servlet_output>N</servlet_output>
+      <do_not_open_new_file_init>N</do_not_open_new_file_init>
+      <extention>txt</extention>
+      <append>N</append>
+      <split>N</split>
+      <haspartno>N</haspartno>
+      <add_date>N</add_date>
+      <add_time>N</add_time>
+      <SpecifyFormat>N</SpecifyFormat>
+      <date_time_format />
+      <add_to_result_filenames>Y</add_to_result_filenames>
+      <pad>N</pad>
+      <fast_dump>N</fast_dump>
+      <splitevery />
+    </file>
+    <fields>
+      <field>
+        <name>expected_count</name>
+        <type>Integer</type>
+        <format>0</format>
+        <length>-1</length>
+        <precision>0</precision>
+      </field>
+    </fields>
+    <attributes />
+    <GUI>
+      <xloc>400</xloc>
+      <yloc>250</yloc>
+    </GUI>
+  </transform>
+</pipeline>
