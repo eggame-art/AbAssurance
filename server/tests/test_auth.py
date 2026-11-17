@@ -56,6 +56,55 @@ def test_status_is_public_without_exposing_routes(client):
     assert client.get("/auth/status").json() == {"status": "ok"}
 
 
+def test_personal_data_always_uses_the_connected_customer(client, monkeypatch):
+    service.create_user("second", "second-test-password", "user", "assureplus", "200")
+    read = Mock(
+        return_value=ConsolidatedResponse(
+            entity="clients",
+            integration_id="a" * 32,
+            snapshot="b" * 32,
+            data_kind="demo",
+            columns=[],
+            records=[],
+            offset=0,
+            limit=25,
+            total=0,
+        )
+    )
+    monkeypatch.setattr(routes, "get_consolidated", read)
+
+    async def run(action):
+        return action("spark")
+
+    client.app.state.spark_runtime = SimpleNamespace(run=run, close=Mock())
+    for username, owner in [("user", ("abassurance", "100")), ("second", ("assureplus", "200"))]:
+        assert login(client, username).status_code == 200
+
+        response = client.get("/me/data/clients?source=other&source_id=999&role=admin")
+
+        assert response.status_code == 200
+        assert read.call_args.kwargs["owner"] == owner
+        assert client.post("/auth/logout").status_code == 200
+
+
+def test_admin_without_customer_cannot_use_personal_data(client):
+    login(client, "admin")
+    assert client.get("/me/data/clients").status_code == 403
+
+
+@pytest.mark.parametrize("error,status", [(FileNotFoundError, 404), (TimeoutError, 504), (RuntimeError, 503)])
+def test_personal_data_failures_are_reported_without_private_diagnostics(client, error, status):
+    async def run(action):
+        raise error("private-host confidential-data")
+
+    client.app.state.spark_runtime = SimpleNamespace(run=run, close=Mock())
+    login(client)
+    response = client.get("/me/data/clients")
+    assert response.status_code == status
+    assert "private-host" not in response.text
+    assert "confidential-data" not in response.text
+
+
 def test_login_limit_cannot_be_bypassed_by_changing_username(client, monkeypatch):
     hashing = Mock(wraps=service.password_hash)
     monkeypatch.setattr(service, "password_hash", hashing)

@@ -18,6 +18,7 @@ venv/
 .coverage
 htmlcov/
 coverage.xml
+coverage/
 
 *.log
 logs/

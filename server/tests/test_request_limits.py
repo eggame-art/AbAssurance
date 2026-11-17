@@ -159,3 +159,15 @@ def test_failed_spark_job_releases_its_slot(monkeypatch):
         asyncio.run(exercise())
     finally:
         runtime.close()
+
+
+def test_closed_executor_does_not_leak_queue_capacity():
+    runtime = SparkRuntime(max_pending=1)
+    runtime.close()
+
+    async def exercise():
+        for _ in range(2):
+            with pytest.raises(RuntimeError, match="shutdown"):
+                await runtime.run(lambda _: None)
+
+    asyncio.run(exercise())

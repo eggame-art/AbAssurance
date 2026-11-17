@@ -27,3 +27,27 @@ test('wrong credentials and expired sessions reach the caller',async()=>{
  mock.method(globalThis,'fetch',async()=>Response.json({detail:'Connexion requise.'},{status:401}));
  await assert.rejects(authController.getSession(),{message:'Connexion requise.'});
 });
+
+test('logout sends a POST with the session cookie and CSRF header', async () => {
+ const fetch = mock.method(globalThis, 'fetch', async () => Response.json({ok:true}));
+ assert.deepEqual(await authController.logout(), {ok:true});
+ const [path, options] = fetch.mock.calls[0].arguments;
+ assert.equal(path, '/api/auth/logout');
+ assert.equal(options.method, 'POST');
+ assert.equal(options.credentials, 'include');
+ assert.equal(options.headers['X-Requested-With'], 'AbAssurance');
+});
+
+test('an expired personal data session notifies the interface', async () => {
+ const previous = Object.getOwnPropertyDescriptor(globalThis, 'window');
+ const events = [];
+ Object.defineProperty(globalThis, 'window', {configurable:true, value:{dispatchEvent:event=>events.push(event.type)}});
+ try {
+  mock.method(globalThis, 'fetch', async () => Response.json({detail:'Session expired.'}, {status:401}));
+  await assert.rejects(authController.getData('clients',0), {message:'Session expired.'});
+  assert.deepEqual(events, ['session-expired']);
+ } finally {
+  if (previous) Object.defineProperty(globalThis, 'window', previous);
+  else delete globalThis.window;
+ }
+});
