@@ -6,6 +6,8 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
+from abassurance.systems.auth.service import protect
+from abassurance.systems.auth.service import router as auth_router
 from abassurance.systems.monitoring.routes import router as monitoring_router
 from abassurance.systems.prediction_api.config import APIConfig
 from abassurance.systems.prediction_api.loader import load_service
@@ -24,6 +26,9 @@ def create_app(config: APIConfig | None = None) -> FastAPI:
             await run_in_threadpool(service.close)
 
     app = FastAPI(title="AbAssurance prediction API", version="0.1.0", lifespan=lifespan)
+
+    app.middleware("http")(protect)
+    app.include_router(auth_router)
 
     @app.exception_handler(RequestValidationError)
     async def invalid_request(request: Request, exc: RequestValidationError) -> JSONResponse:

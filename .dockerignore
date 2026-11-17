@@ -15,3 +15,7 @@ Infrastructure/database
 **/node_modules
 **/.npm-cache
 client/dist
+
+auth-demo-credentials.txt
+*.sqlite
+*.sqlite-*
