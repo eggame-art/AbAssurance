@@ -1,6 +1,7 @@
 import asyncio
 from collections.abc import Callable
 from typing import Annotated, TypeVar
+from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 
@@ -66,16 +67,23 @@ async def consolidated(
     offset: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 25,
     integration_id: Annotated[str | None, Query(pattern=r"^[0-9a-f]{32}$")] = None,
+    customer_id: UUID | None = None,
 ) -> ConsolidatedResponse:
     from abassurance.systems.data_api.consolidated import committed_run, get_consolidated
 
     response.headers["Cache-Control"] = "no-store"
 
+    if customer_id is not None and entity != "contracts":
+        raise HTTPException(422, "Customer filtering requires contracts.")
     try:
         selected = committed_run(integration_id)
 
         return await request.app.state.spark_runtime.run(
-            lambda spark: get_consolidated(spark, entity, offset, limit, selected.id)
+            lambda spark: (
+                get_consolidated(spark, entity, offset, limit, selected.id, customer_filter=str(customer_id))
+                if customer_id is not None
+                else get_consolidated(spark, entity, offset, limit, selected.id)
+            )
         )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="No completed consolidated snapshot is available.") from exc

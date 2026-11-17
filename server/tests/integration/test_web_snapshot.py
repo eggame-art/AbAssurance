@@ -57,8 +57,8 @@ def test_every_common_field_matches_its_archived_source_and_all_relationships():
                     postal_code=value("AB_CODE_POSTAL", "AP_ZIP_CODE"),
                     tax_number=raw.get("AB_NUM_FISCAL"),
                     created_at=date_value(value("AB_DATE_CREATION", "AP_CREATED_AT"), timestamp=True),
-                    customer_status="ACTIF",
-                    loyalty_score=raw.get("AP_LOYALTY_SCORE"),
+                    customer_status="ACTIVE",
+                    loyalty_score=amount(raw.get("AP_LOYALTY_SCORE")),
                 )
             elif entity == "contracts":
                 reference = value("AB_POLICY_NUMBER", "AP_CONTRACT_REF")
@@ -67,11 +67,11 @@ def test_every_common_field_matches_its_archived_source_and_all_relationships():
                     source_system=source,
                     source_reference=reference,
                     customer_id=identity("customers", source, value("AB_CLIENT_ID", "AP_USER_ID")),
-                    product_type=value("AB_TYPE_ASSURANCE", "AP_PRODUCT_CODE"),
+                    product_type={"AUTO": "CAR", "HABITATION": "HOME"}[value("AB_TYPE_ASSURANCE", "AP_PRODUCT_CODE")],
                     start_date=date_value(value("AB_DATE_DEBUT", "AP_START_DATE")),
                     end_date=date_value(value("AB_DATE_FIN", "AP_END_DATE")),
                     annual_premium=amount(value("AB_PRIME_ANNUELLE", "AP_MONTHLY_PREMIUM"), 1 if ab else 12),
-                    contract_status="ACTIF",
+                    contract_status="ACTIVE",
                     agency_id=raw.get("AB_AGENCE_ID"),
                     broker_code=raw.get("AP_BROKER_CODE"),
                 )
@@ -84,11 +84,11 @@ def test_every_common_field_matches_its_archived_source_and_all_relationships():
                     contract_id=identity("contracts", source, value("AB_POLICY_NUMBER", "AP_CONTRACT_REF")),
                     incident_date=date_value(value("AB_DATE_SINISTRE", "AP_INCIDENT_DATE"), timestamp=True),
                     estimated_amount=amount(value("AB_MONTANT_ESTIME", "AP_ESTIMATED_AMOUNT")),
-                    claim_status={"OPEN": "OUVERT", "CLOSED": "CLOS", "OUVERT": "OUVERT", "CLOS": "CLOS"}[
+                    claim_status={"OPEN": "OPEN", "CLOSED": "CLOSED", "OUVERT": "OPEN", "CLOS": "CLOSED"}[
                         value("AB_STATUT_SINISTRE", "AP_CLAIM_STATUS")
                     ],
                     description=value("AB_DESCRIPTION", "AP_CLAIM_COMMENT"),
-                    fraud_score=raw.get("AP_FRAUD_SCORE"),
+                    fraud_score=amount(raw.get("AP_FRAUD_SCORE")),
                 )
             else:
                 reference = str(value("AB_PAYMENT_ID", "AP_PAYMENT_REF"))
@@ -100,12 +100,12 @@ def test_every_common_field_matches_its_archived_source_and_all_relationships():
                     payment_date=date_value(value("AB_DATE_PAIEMENT", "AP_PAYMENT_DATETIME"), timestamp=True),
                     amount=amount(value("AB_MONTANT", "AP_AMOUNT_PAID")),
                     payment_method={
-                        "BANK_TRANSFER": "VIREMENT",
-                        "CARD": "CARTE",
-                        "VIREMENT": "VIREMENT",
-                        "CARTE": "CARTE",
+                        "BANK_TRANSFER": "BANK_TRANSFER",
+                        "CARD": "CARD",
+                        "VIREMENT": "BANK_TRANSFER",
+                        "CARTE": "CARD",
                     }[value("AB_MODE_PAIEMENT", "AP_PAYMENT_CHANNEL")],
-                    transaction_status=None if ab else "TERMINE",
+                    transaction_status=None if ab else "COMPLETED",
                 )
             assert data == expected, (entity, source, reference)
 

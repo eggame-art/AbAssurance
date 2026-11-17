@@ -26,6 +26,7 @@ class IntegrationRun(BaseModel):
     created_at: datetime
     started_at: datetime | None = None
     finished_at: datetime | None = None
+    etl_engine: Literal["apache-hop"] | None = None
     etl_verified_at: datetime | None = None
     spark_verified_at: datetime | None = None
     snapshot: str | None = None

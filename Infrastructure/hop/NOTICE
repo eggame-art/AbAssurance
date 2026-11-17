@@ -1,0 +1,3 @@
+﻿This project runs Apache Hop, licensed under the Apache License, Version 2.0.
+Pipeline and workflow metadata follow the native formats documented by Apache Hop.
+The official Hop distribution includes its upstream LICENSE and NOTICE files.

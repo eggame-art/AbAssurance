@@ -1,4 +1,4 @@
-import assert from 'node:assert/strict';
+﻿import assert from 'node:assert/strict';
 import { after, afterEach, before, mock, test } from 'node:test';
 import { createServer } from 'vite';
 
@@ -61,7 +61,7 @@ test('invalid successful responses are rejected before rendering', async () => {
     [{ id: 'oracle', name: 'Oracle', status: 'available', message: { secret: 'internal' } }],
   ]) {
     mock.method(globalThis, 'fetch', async () => Response.json(data));
-    await assert.rejects(pipelineController.getServicesStatus(), /invalide/);
+    await assert.rejects(pipelineController.getServicesStatus(), /invalid/i);
   }
 });
 

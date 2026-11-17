@@ -22,7 +22,7 @@ def test_oracle_contract_mapping():
 
     assert result["contract_id"] == "eefff547-f7ef-58e7-8290-39fd86bd4899"
     assert result["customer_id"] == "0ce23490-7b17-57a3-933d-829abb01a605"
-    assert result["product_type"] == "AUTO"
+    assert result["product_type"] == "CAR"
     assert result["annual_premium"] == "1200.00"
     assert result["agency_id"] == 10
     assert result["broker_code"] is None

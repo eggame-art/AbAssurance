@@ -1,0 +1,20 @@
+{
+  "name": "sqlserver",
+  "rdbms": {
+    "GENERIC": {
+      "pluginId": "GENERIC",
+      "pluginName": "Generic database",
+      "accessType": 0,
+      "hostname": "",
+      "databaseName": "",
+      "port": "",
+      "username": "${SQLSERVER_USER}",
+      "password": "${SQLSERVER_PASSWORD}",
+      "manualUrl": "jdbc:sqlserver://${SQLSERVER_HOST}:${SQLSERVER_PORT};databaseName=${SQLSERVER_DATABASE};encrypt=${HOP_SQLSERVER_ENCRYPT};trustServerCertificate=${HOP_SQLSERVER_TRUST_CERTIFICATE};loginTimeout=10;socketTimeout=30000",
+      "attributes": {
+        "CUSTOM_DRIVER_CLASS": "com.microsoft.sqlserver.jdbc.SQLServerDriver",
+        "SUPPORTS_TIMESTAMP_DATA_TYPE": "Y"
+      }
+    }
+  }
+}

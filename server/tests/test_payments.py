@@ -21,7 +21,7 @@ def test_oracle_payment_mapping():
     assert result["contract_id"] == "eefff547-f7ef-58e7-8290-39fd86bd4899"
     assert result["payment_date"] == "2025-04-15T00:00:00"
     assert result["amount"] == "250.50"
-    assert result["payment_method"] == "VIREMENT"
+    assert result["payment_method"] == "BANK_TRANSFER"
     assert result["transaction_status"] is None
     assert set(result) == {field.name for field in fields(Payment)}
 
@@ -44,7 +44,7 @@ def test_sqlserver_payment_mapping():
     assert result["contract_id"] == "c648a223-b93a-5604-80f2-c9e6533def8e"
     assert result["amount"] == "150.00"
     assert result["payment_date"] == "2025-04-15T14:30:00"
-    assert result["transaction_status"] == "TERMINE"
+    assert result["transaction_status"] == "COMPLETED"
     assert set(result) == {field.name for field in fields(Payment)}
 
 

@@ -232,3 +232,12 @@ def test_invalid_hdfs_configuration_never_sends_request(monkeypatch, url):
         service.check_hdfs(Environment({"HDFS_HTTP_URL": url}))
 
     opener.assert_not_called()
+
+
+@pytest.fixture(autouse=True)
+def isolate_route_contracts_from_authentication(monkeypatch):
+    async def passthrough(request, call_next):
+        return await call_next(request)
+
+    monkeypatch.setattr("abassurance.systems.monitoring.app.protect", passthrough)
+    monkeypatch.setattr("abassurance.systems.prediction_api.app.protect", passthrough)

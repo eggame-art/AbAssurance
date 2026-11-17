@@ -160,3 +160,34 @@ def test_shared_spark_is_lazy_and_survives_an_action_failure(monkeypatch):
 
     create.assert_called_once_with(kafka=False)
     spark.stop.assert_called_once()
+
+
+def test_contract_customer_filter_is_applied_inside_the_pinned_request(client, monkeypatch):
+    test_client, directory = client
+    run = store_run(directory, "a", "succeeded", datetime.now(UTC))
+    assert run.snapshot is not None
+    identifier = "0ce23490-7b17-57a3-933d-829abb01a605"
+    result = ConsolidatedResponse(
+        entity="contracts",
+        integration_id=run.id,
+        snapshot=run.snapshot,
+        data_kind="demo",
+        columns=[],
+        records=[],
+        offset=0,
+        limit=25,
+        total=0,
+    )
+    read = Mock(return_value=result)
+    monkeypatch.setattr(consolidated, "get_consolidated", read)
+
+    async def execute(action):
+        return action("spark")
+
+    test_client.app.state.spark_runtime = SimpleNamespace(run=execute)
+    response = test_client.get(
+        "/data/consolidated/contracts", params={"customer_id": identifier, "integration_id": run.id}
+    )
+    assert response.status_code == 200
+    read.assert_called_once_with("spark", "contracts", 0, 25, run.id, customer_filter=identifier)
+    assert test_client.get("/data/consolidated/clients", params={"customer_id": identifier}).status_code == 422

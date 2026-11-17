@@ -7,11 +7,15 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from abassurance.shared.spark_runtime import SparkRuntime
+from abassurance.systems.auth.routes import router as personal_router
+from abassurance.systems.auth.service import protect
+from abassurance.systems.auth.service import router as auth_router
 from abassurance.systems.data_api.routes import router as data_router
 from abassurance.systems.integration_api.routes import router as integration_router
 from abassurance.systems.integration_api.service import recover_interrupted
 from abassurance.systems.monitoring.routes import router
 from abassurance.systems.prediction_api.config import APIConfig
+from abassurance.systems.prediction_api.contracts import router as contract_prediction_router
 from abassurance.systems.prediction_api.loader import load_service
 from abassurance.systems.prediction_api.routes import get_service
 from abassurance.systems.prediction_api.routes import router as prediction_router
@@ -30,6 +34,9 @@ def create_app() -> FastAPI:
             await asyncio.to_thread(app.state.spark_runtime.close)
 
     app = FastAPI(title="AbAssurance infrastructure API", lifespan=lifespan)
+    app.middleware("http")(protect)
+    app.include_router(auth_router)
+    app.include_router(personal_router)
     app.state.spark_runtime = SparkRuntime()
     app.state.prediction_service = None
 
@@ -63,4 +70,5 @@ def create_app() -> FastAPI:
     app.include_router(integration_router)
     app.include_router(data_router)
     app.include_router(prediction_router)
+    app.include_router(contract_prediction_router)
     return app

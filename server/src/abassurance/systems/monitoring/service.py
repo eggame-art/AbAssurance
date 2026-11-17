@@ -35,11 +35,12 @@ def check_batch_runtime(env: Environment, service_id: str) -> str:
         raise CheckNotConfigured("Run a complete integration to verify this service.")
 
     if service_id == "etl":
-        java = env.required("TALAXIE_JAVA")
-        job = Path(env.required("TALAXIE_JOB_DIR")) / "ExtractPublish/extractpublish_0_1.jar"
-
-        if not job.is_file():
-            raise CheckNotConfigured("Talaxie job is not installed.")
+        if run is None or run.etl_engine != "apache-hop":
+            raise CheckNotConfigured("Run an Apache Hop integration to verify this runtime.")
+        java = str(Path(env.required("HOP_JAVA_HOME")) / "bin/java")
+        job = Path(env.required("HOP_PROJECT_DIR")) / "workflows/integrate.hwf"
+        if not job.is_file() or not (Path(env.required("HOP_HOME")) / "hop-run.sh").is_file():
+            raise CheckNotConfigured("Apache Hop workflow is not installed.")
     else:
         import pyspark
 
@@ -199,7 +200,7 @@ async def get_services_status() -> list[ServiceStatus]:
         ("kafka", "Kafka", check_kafka),
         ("spark", "Spark", check_spark),
         ("hdfs", "Hadoop HDFS", check_hdfs),
-        ("etl", "Talaxie (ETL)", check_etl),
+        ("etl", "Apache Hop (ETL)", check_etl),
     )
 
     return list(

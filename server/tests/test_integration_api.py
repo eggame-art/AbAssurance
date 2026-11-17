@@ -13,13 +13,22 @@ from fastapi.testclient import TestClient
 
 @pytest.fixture(autouse=True)
 def runtime(tmp_path, monkeypatch):
-    job = tmp_path / "job/ExtractPublish"
+    job = tmp_path / "hop/project/workflows"
     job.mkdir(parents=True)
-    (job / "extractpublish_0_1.jar").write_bytes(b"test fixture")
-
+    (job / "integrate.hwf").write_text("<workflow/>")
+    (job.parent.parent / "hop-run.sh").write_text("test launcher")
     monkeypatch.setattr(service, "state_directory", lambda: tmp_path / "runs")
-    monkeypatch.setenv("TALAXIE_JOB_DIR", str(job.parent))
-    monkeypatch.setenv("TALAXIE_JAVA", "test-java")
+    monkeypatch.setenv("HOP_PROJECT_DIR", str(job.parent))
+    monkeypatch.setenv("HOP_HOME", str(job.parent.parent))
+    monkeypatch.setenv("HOP_JAVA_HOME", "test-java-home")
+    monkeypatch.setattr(service, "prepare_hop_topics", Mock())
+    monkeypatch.setattr(
+        service,
+        "published_counts",
+        lambda config: dict.fromkeys(
+            (f"{source}:{entity}" for source, tables in service_source_tables().items() for entity in tables), 2
+        ),
+    )
     monkeypatch.setenv("PIPELINE_ADMIN_TOKEN", "a" * 64)
 
 
@@ -97,7 +106,8 @@ def test_worker_uses_isolated_topics_and_only_reports_verified_output(monkeypatc
         assert latest is not None
 
         if log.name == "etl.log":
-            log.write_text('TALAXIE status=succeeded published={"abassurance:customers":8,"assureplus:customers":8}\n')
+            write_hop_counts(env, 2)
+            log.write_text("Apache Hop completed")
             assert latest.stage == "etl"
         else:
             assert latest.etl_verified_at
@@ -129,7 +139,8 @@ def test_failed_stage_does_not_report_success_or_leak_diagnostics(monkeypatch, s
         if log.name == f"{stage}.log":
             raise RuntimeError("private-password secret-host")
 
-        log.write_text('TALAXIE status=succeeded published={"abassurance:customers":16}\n')
+        write_hop_counts(env, 2)
+        log.write_text("Apache Hop completed")
 
     monkeypatch.setattr(service, "run_command", command)
 
@@ -165,7 +176,16 @@ def test_missing_acknowledgment_stops_before_spark(monkeypatch):
 def test_mismatched_source_and_snapshot_counts_cannot_succeed(monkeypatch, manifest):
     def command(args, env, log):
         if log.name == "etl.log":
-            log.write_text('TALAXIE status=succeeded published={"abassurance:customers":999}\n')
+            write_hop_counts(env, 999)
+            log.write_text("Apache Hop completed")
+            monkeypatch.setattr(
+                service,
+                "published_counts",
+                lambda config: dict.fromkeys(
+                    (f"{source}:{entity}" for source, tables in service_source_tables().items() for entity in tables),
+                    999,
+                ),
+            )
         else:
             (log.parent / "result.json").write_text(json.dumps(manifest))
 
@@ -205,7 +225,8 @@ def test_snapshot_is_read_again_before_success(monkeypatch, tmp_path, manifest):
 
     reader = Mock(
         side_effect=lambda spark, state, entity, **kwargs: SimpleNamespace(
-            count=lambda: 0 if entity == "rejected" else 4
+            count=lambda: 0 if entity == "rejected" else 4,
+            drop=lambda _: SimpleNamespace(schema=worker.entity_schema(entity)),
         )
     )
 
@@ -230,7 +251,7 @@ def test_batch_status_requires_real_completed_job_and_healthy_runtime(monkeypatc
     with pytest.raises(monitoring.CheckNotConfigured):
         monitoring.check_etl(env)
 
-    monkeypatch.setattr(monitoring, "latest_run", lambda: SimpleNamespace(etl_verified_at=now))
+    monkeypatch.setattr(monitoring, "latest_run", lambda: SimpleNamespace(etl_verified_at=now, etl_engine="apache-hop"))
 
     java = Mock()
     monkeypatch.setattr(monitoring.subprocess, "run", java)
@@ -245,3 +266,59 @@ def test_batch_status_requires_real_completed_job_and_healthy_runtime(monkeypatc
 
     with pytest.raises(RuntimeError):
         monitoring.check_etl(env)
+
+
+@pytest.fixture(autouse=True)
+def isolate_route_contracts_from_authentication(monkeypatch):
+    async def passthrough(request, call_next):
+        return await call_next(request)
+
+    monkeypatch.setattr("abassurance.systems.monitoring.app.protect", passthrough)
+    monkeypatch.setattr("abassurance.systems.prediction_api.app.protect", passthrough)
+
+
+def service_source_tables():
+    from abassurance.systems.messaging.config import SOURCE_TABLES
+
+    return SOURCE_TABLES
+
+
+def write_hop_counts(env, count):
+    from pathlib import Path
+
+    folder = Path(env["HOP_COUNTS_DIR"])
+    folder.mkdir(parents=True, exist_ok=True)
+    for source, tables in service_source_tables().items():
+        for entity in tables:
+            (folder / f"{source}_{entity}.txt").write_text(str(count))
+
+
+def test_hop_missing_kafka_publications_never_reach_spark(monkeypatch):
+    calls = []
+
+    def command(args, env, log):
+        calls.append(log.name)
+        write_hop_counts(env, 2)
+
+    monkeypatch.setattr(service, "run_command", command)
+    monkeypatch.setattr(
+        service,
+        "published_counts",
+        lambda config: dict.fromkeys(
+            (f"{source}:{entity}" for source, tables in service_source_tables().items() for entity in tables), 0
+        ),
+    )
+    queued = service.create_run()
+    service.execute_run(queued.id)
+    run = service.latest_run()
+    assert run is not None
+    assert run.status == "failed" and run.stage == "etl"
+    assert run.etl_verified_at is None and run.snapshot is None
+    assert calls == ["etl.log"]
+
+
+def test_a_legacy_etl_success_does_not_validate_apache_hop(monkeypatch):
+    now = datetime.now(UTC)
+    monkeypatch.setattr(monitoring, "latest_run", lambda: SimpleNamespace(etl_verified_at=now, etl_engine=None))
+    with pytest.raises(monitoring.CheckNotConfigured, match="Apache Hop"):
+        monitoring.check_etl(service.Environment.from_file(service.PROJECT_ROOT / ".env"))

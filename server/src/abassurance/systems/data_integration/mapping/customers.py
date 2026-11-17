@@ -3,12 +3,13 @@ from dataclasses import asdict
 from typing import Any
 
 from abassurance.shared.models.unified import Customer
-from abassurance.systems.data_integration.mapping.fields import optional_integer, optional_text
+from abassurance.systems.data_integration.mapping.fields import optional_text
 from abassurance.systems.data_integration.mapping.identifiers import make_id
 from abassurance.systems.data_integration.mapping.normalizers import (
     normalize_category,
     normalize_date,
     normalize_datetime,
+    normalize_score,
 )
 
 CUSTOMER_FIELDS = {
@@ -78,6 +79,6 @@ def map_customer(record: Mapping[str, Any], source: str) -> dict[str, Any]:
             tax_number=optional_text(record.get(tax_field), "tax_number") if tax_field else None,
             created_at=normalize_datetime(record.get(fields["created_at"])),
             customer_status=normalize_category(record.get(fields["status"]), "customer_status"),
-            loyalty_score=optional_integer(record.get(loyalty_field), "loyalty_score") if loyalty_field else None,
+            loyalty_score=normalize_score(record.get(loyalty_field)) if loyalty_field else None,
         )
     )

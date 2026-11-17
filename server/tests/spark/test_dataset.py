@@ -12,11 +12,17 @@ from abassurance.systems.spark_pipeline.hdfs import HdfsState
 
 def frames_from(spark, records):
     from abassurance.systems.spark_pipeline.schemas import entity_schema
+    from pyspark.sql.types import StringType, StructField, StructType
 
     frames = {}
 
     for entity in ("customers", "contracts", "claims", "payments"):
-        schema = entity_schema(entity)
+        schema = StructType(
+            [
+                StructField(field.name, field.dataType if field.name == "agency_id" else StringType(), field.nullable)
+                for field in entity_schema(entity)
+            ]
+        )
         rows = [dict.fromkeys(schema.fieldNames()) | record for record in records.get(entity, [])]
 
         frames[entity] = spark.createDataFrame(rows, schema)
