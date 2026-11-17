@@ -35,31 +35,58 @@ async def read_source(source: DataSource, entity: str, fetch: Callable[[DataSour
         raise HTTPException(status_code=502, detail=f"Failed to retrieve {entity} data from {name}.") from exc
 
 
-@router.get("/clients", response_model=ClientsResponse)
+@router.get(
+    "/clients",
+    response_model=ClientsResponse,
+    summary="Lister les clients",
+    description="Administrateur. Lit les clients dans la source choisie : oracle ou sqlserver.",
+)
 async def clients(source: DataSource, response: Response) -> ClientsResponse:
     response.headers["Cache-Control"] = "no-store"
     return await read_source(source, "client", get_clients)
 
 
-@router.get("/contracts", response_model=ContractsResponse)
+@router.get(
+    "/contracts",
+    response_model=ContractsResponse,
+    summary="Lister les contrats",
+    description="Administrateur. Lit les contrats dans la source choisie : oracle ou sqlserver.",
+)
 async def contracts(source: DataSource, response: Response) -> ContractsResponse:
     response.headers["Cache-Control"] = "no-store"
     return await read_source(source, "contract", get_contracts)
 
 
-@router.get("/claims", response_model=ClaimsResponse)
+@router.get(
+    "/claims",
+    response_model=ClaimsResponse,
+    summary="Lister les sinistres",
+    description="Administrateur. Lit les sinistres dans la source choisie : oracle ou sqlserver.",
+)
 async def claims(source: DataSource, response: Response) -> ClaimsResponse:
     response.headers["Cache-Control"] = "no-store"
     return await read_source(source, "claim", get_claims)
 
 
-@router.get("/payments", response_model=PaymentsResponse)
+@router.get(
+    "/payments",
+    response_model=PaymentsResponse,
+    summary="Lister les paiements",
+    description="Administrateur. Lit les paiements dans la source choisie : oracle ou sqlserver.",
+)
 async def payments(source: DataSource, response: Response) -> PaymentsResponse:
     response.headers["Cache-Control"] = "no-store"
     return await read_source(source, "payment", get_payments)
 
 
-@router.get("/consolidated/{entity}", response_model=ConsolidatedResponse)
+@router.get(
+    "/consolidated/{entity}",
+    response_model=ConsolidatedResponse,
+    summary="Consulter les données consolidées",
+    description="Administrateur. Renvoie une page des données intégrées dans HDFS. "
+    "integration_id sélectionne une intégration ; par défaut, la dernière réussie. "
+    "customer_id permet de filtrer les contrats d'un client.",
+)
 async def consolidated(
     entity: DataEntity,
     request: Request,

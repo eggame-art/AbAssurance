@@ -29,13 +29,26 @@ def require_admin(request: Request, authorization: Annotated[str | None, Header(
         raise HTTPException(status_code=403, detail="Accès administrateur refusé.")
 
 
-@router.get("/latest", response_model=IntegrationRun | None)
+@router.get(
+    "/latest",
+    response_model=IntegrationRun | None,
+    summary="Voir la dernière intégration",
+    description="Administrateur. Renvoie l'état, les dates et le résultat du dernier traitement, ou null s'il n'y en a pas.",
+)
 def get_latest(response: Response) -> IntegrationRun | None:
     response.headers["Cache-Control"] = "no-store"
     return latest_run()
 
 
-@router.post("", response_model=IntegrationRun, status_code=202, dependencies=[Depends(require_admin)])
+@router.post(
+    "",
+    response_model=IntegrationRun,
+    status_code=202,
+    dependencies=[Depends(require_admin)],
+    summary="Lancer une intégration",
+    description="Administrateur. Démarre le traitement Hop, Kafka, Spark et HDFS en arrière-plan. "
+    "Répond 409 si un traitement est déjà en attente ou en cours.",
+)
 def start_integration(tasks: BackgroundTasks, response: Response) -> IntegrationRun:
     try:
         run = create_run()

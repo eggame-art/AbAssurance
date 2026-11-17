@@ -107,7 +107,7 @@ def current_user(request):
 async def protect(request: Request, call_next):
     path = request.url.path
 
-    public = path in ("/auth/login", "/auth/me", "/openapi.json", "/docs", "/docs/oauth2-redirect")
+    public = path in ("/auth/login", "/auth/me", "/auth/status")
 
     if request.method not in ("GET", "HEAD", "OPTIONS"):
         if request.headers.get("X-Requested-With") != "AbAssurance":
@@ -130,12 +130,17 @@ async def protect(request: Request, call_next):
     return response
 
 
+@router.get("/status", include_in_schema=False)
+def status():
+    return {"status": "ok"}
+
+
 class Credentials(BaseModel):
     username: str = Field(min_length=1, max_length=100)
     password: str = Field(min_length=1, max_length=1024)
 
 
-@router.post("/login")
+@router.post("/login", summary="Se connecter", description="Vérifie les identifiants et crée un cookie de session.")
 def login(credentials: Credentials, request: Request, response: Response):
     now = time.time()
 
@@ -195,7 +200,11 @@ def login(credentials: Credentials, request: Request, response: Response):
     return public_user(row)
 
 
-@router.get("/me")
+@router.get(
+    "/me",
+    summary="Voir sa session",
+    description="Renvoie le compte connecté et son rôle. Répond 401 sans session valide.",
+)
 def me(request: Request):
     user = current_user(request)
 
@@ -205,7 +214,7 @@ def me(request: Request):
     return user
 
 
-@router.post("/logout")
+@router.post("/logout", summary="Se déconnecter", description="Supprime la session et son cookie.")
 def logout(request: Request, response: Response):
     token = request.cookies.get(COOKIE, "")
     token_hash = hashlib.sha256(token.encode()).hexdigest()

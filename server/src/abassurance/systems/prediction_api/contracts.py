@@ -120,7 +120,13 @@ def predict_contract(spark, body: ContractInput, service: PredictionService) -> 
         prepared.close()
 
 
-@router.post("/predict/contract", response_model=ContractResult)
+@router.post(
+    "/predict/contract",
+    response_model=ContractResult,
+    summary="Prédire pour un contrat",
+    description="Administrateur. Calcule les caractéristiques du contrat à la date choisie depuis "
+    "les données consolidées, puis renvoie la prédiction. Nécessite une intégration réussie et un modèle disponible.",
+)
 async def contract_prediction(
     body: ContractInput, request: Request, service: Annotated[PredictionService, Depends(get_service)]
 ) -> ContractResult:
