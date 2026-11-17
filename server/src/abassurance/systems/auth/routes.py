@@ -6,7 +6,12 @@ from abassurance.systems.data_api.schemas import ConsolidatedResponse, DataEntit
 router = APIRouter(prefix="/me/data", tags=["personal-data"])
 
 
-@router.get("/{entity}", response_model=ConsolidatedResponse)
+@router.get(
+    "/{entity}",
+    response_model=ConsolidatedResponse,
+    summary="Consulter ses données",
+    description="Renvoie une page des données du client lié au compte connecté. Le client est déterminé par la session.",
+)
 async def personal_data(
     entity: DataEntity, request: Request, offset: int = Query(0, ge=0), limit: int = Query(25, ge=1, le=100)
 ) -> ConsolidatedResponse:

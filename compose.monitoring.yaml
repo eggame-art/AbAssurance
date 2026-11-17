@@ -45,7 +45,7 @@ services:
         - CMD
         - python
         - -c
-        - "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/openapi.json', timeout=5)"
+        - "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/auth/status', timeout=5)"
       interval: 15s
       timeout: 10s
       retries: 3

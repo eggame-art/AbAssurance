@@ -1,4 +1,5 @@
 import asyncio
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
@@ -33,7 +34,14 @@ def create_app() -> FastAPI:
                 await asyncio.to_thread(service.close)
             await asyncio.to_thread(app.state.spark_runtime.close)
 
-    app = FastAPI(title="AbAssurance infrastructure API", lifespan=lifespan)
+    app = FastAPI(
+        title="AbAssurance API",
+        description="Connexion par cookie de session. Les routes métier sont réservées aux administrateurs, "
+        "sauf /me/data qui donne accès aux données du compte connecté. "
+        "Les requêtes POST doivent inclure l'en-tête X-Requested-With: AbAssurance.",
+        lifespan=lifespan,
+        root_path=os.environ.get("API_ROOT_PATH", "/api"),
+    )
     app.middleware("http")(protect)
     app.include_router(auth_router)
     app.include_router(personal_router)
@@ -71,4 +79,5 @@ def create_app() -> FastAPI:
     app.include_router(data_router)
     app.include_router(prediction_router)
     app.include_router(contract_prediction_router)
+
     return app

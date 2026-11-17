@@ -39,6 +39,7 @@ services:
       HDFS_HTTP_URL: http://namenode:9870
       HADOOP_CONF_DIR: /opt/hadoop-conf
       AUTH_DB_PATH: /var/lib/abassurance/auth.sqlite
+      API_ROOT_PATH: /api
       AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
       INTEGRATION_STATE_DIR: /var/lib/abassurance/integrations
       INTEGRATION_HDFS_ROOT: hdfs://namenode:9000/abassurance-web
@@ -57,7 +58,7 @@ services:
       namenode: {condition: service_healthy}
       datanode: {condition: service_healthy}
     healthcheck:
-      test: [CMD, python, -c, "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/openapi.json', timeout=5)"]
+      test: [CMD, python, -c, "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/auth/status', timeout=5)"]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -76,7 +77,7 @@ services:
     depends_on:
       backend: {condition: service_healthy}
     healthcheck:
-      test: [CMD-SHELL, "wget -q -O /dev/null http://backend:8000/openapi.json && test -s /srv/index.html"]
+      test: [CMD-SHELL, "wget -q -O /dev/null http://backend:8000/auth/status && test -s /srv/index.html"]
       interval: 15s
       timeout: 10s
       retries: 5

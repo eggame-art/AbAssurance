@@ -29,6 +29,33 @@ def login(client, username="user"):
     return client.post("/auth/login", json={"username": username, "password": f"{username}-test-password"})
 
 
+def test_proxy_prefix_keeps_docs_and_authentication_working(client, monkeypatch):
+    monkeypatch.setenv("API_ROOT_PATH", "/api")
+    with TestClient(web.create_app(), headers={"X-Requested-With": "AbAssurance"}) as proxied:
+        assert login(proxied, "admin").status_code == 200
+        assert "/api/openapi.json" in proxied.get("/docs").text
+        assert {"url": "/api"} in proxied.get("/openapi.json").json()["servers"]
+        assert proxied.post("/auth/logout").status_code == 200
+        assert proxied.get("/pipeline/services").status_code == 401
+        assert login(proxied).status_code == 200
+        assert proxied.get("/auth/me").json()["role"] == "user"
+        assert proxied.get("/pipeline/services").status_code == 403
+
+
+@pytest.mark.parametrize("path", ["/docs", "/redoc", "/openapi.json", "/docs/oauth2-redirect"])
+def test_documentation_requires_admin(client, path):
+    assert client.get(path).status_code == 401
+    login(client)
+    assert client.get(path).status_code == 403
+    client.post("/auth/logout")
+    login(client, "admin")
+    assert client.get(path).status_code == 200
+
+
+def test_status_is_public_without_exposing_routes(client):
+    assert client.get("/auth/status").json() == {"status": "ok"}
+
+
 def test_login_without_client_address(client):
     request = Request({"type": "http", "headers": [], "client": None})
     response = Response()

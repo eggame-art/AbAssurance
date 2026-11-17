@@ -9,19 +9,25 @@ import type { User } from "./systems/auth/models/User";
 import styles from "./App.module.css";
 
 export function App() {
-  const [hash, setHash] = useState(() => window.location.hash);
+  const [pathname, setPathname] = useState(() => window.location.pathname);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const isDataPage = hash === "#/donnees";
+  const isDataPage = pathname === "/donnees";
 
   useEffect(() => {
     let active = true;
 
-    function handleHashChange() {
-      setHash(window.location.hash);
+    function handleLocationChange() {
+      const legacyPath = window.location.hash.slice(1);
+      if (legacyPath === "/pipeline" || legacyPath === "/donnees") {
+        window.history.replaceState(null, "", legacyPath + window.location.search);
+      }
+      setPathname(window.location.pathname);
     }
+
+    handleLocationChange();
 
     function handleSessionExpired() {
       setUser(null);
@@ -39,7 +45,8 @@ export function App() {
       }
     }
 
-    window.addEventListener("hashchange", handleHashChange);
+    window.addEventListener("popstate", handleLocationChange);
+    window.addEventListener("hashchange", handleLocationChange);
     window.addEventListener("session-expired", handleSessionExpired);
 
     void loadSession();
@@ -47,10 +54,16 @@ export function App() {
     return () => {
       active = false;
 
-      window.removeEventListener("hashchange", handleHashChange);
+      window.removeEventListener("popstate", handleLocationChange);
+      window.removeEventListener("hashchange", handleLocationChange);
       window.removeEventListener("session-expired", handleSessionExpired);
     };
   }, []);
+
+  function navigate(path: string) {
+    window.history.pushState(null, "", path);
+    setPathname(path);
+  }
 
   async function logout() {
     setError("");
@@ -68,7 +81,7 @@ export function App() {
       <header className={styles.header}>
         <p className={styles.name}>AbAssurance</p>
 
-        {user?.role === "admin" && <Navigation isDataPage={isDataPage} />}
+        {user?.role === "admin" && <Navigation isDataPage={isDataPage} onNavigate={navigate} />}
 
         {user && (
           <p>
