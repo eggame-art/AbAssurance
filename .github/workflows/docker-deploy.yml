@@ -23,10 +23,16 @@ jobs:
       - uses: actions/checkout@v6
       - name: Prepare CI configuration
         run: cp deploy/production.env.example .env
+      - name: Check network isolation policy
+        run: |
+          node --test deploy/check-networks.test.mjs
+          node deploy/check-networks.mjs
       - name: Validate Compose and build production images
         run: |
           docker compose -f compose.production.yaml config --quiet
           docker compose -f compose.production.yaml build --pull backend frontend
+      - name: Test allowed and blocked connections
+        run: node deploy/check-networks.mjs --runtime
       - name: Verify backend startup and authentication
         run: bash deploy/smoke.sh
       - name: Validate web server configuration
