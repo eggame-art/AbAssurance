@@ -79,6 +79,7 @@ def test_endpoint_is_independent_of_prediction_and_returns_read_only_statuses(pr
         (TimeoutError("private-password at internal-host"), "unavailable"),
         (ConfigurationError("private-password at internal-host"), "not_checked"),
         (ImportError("private-password at internal-host"), "not_checked"),
+        (service.CheckNotConfigured("private-password at internal-host"), "not_checked"),
     ],
 )
 def test_failure_does_not_hide_other_results_or_expose_diagnostics(probes, error, expected):

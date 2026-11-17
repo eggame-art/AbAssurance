@@ -1,14 +1,32 @@
-﻿FROM abassurance-hop:2.20.0 AS etl
+FROM apache/hop:2.20.0@sha256:8a23fd00099874e76fc1cbc29f7e7aecc68de95445c062ba6dcbb51e9b4c5866 AS etl
+USER root
+ADD --checksum=sha256:f52e9335276cd3999c23bb5a364fa01a628f3468945444d03cb7f92271bca1da https://repo.maven.apache.org/maven2/com/oracle/database/jdbc/ojdbc11/23.9.0.25.07/ojdbc11-23.9.0.25.07.jar /opt/hop/lib/jdbc/ojdbc11.jar
+COPY Infrastructure/hop/project /opt/hop/project
+COPY Infrastructure/hop/run.py /opt/hop/run.py
+COPY Infrastructure/hop/hop-config.json /opt/hop/config/hop-config.json
 FROM eclipse-temurin:21-jdk-jammy AS hop-java
-FROM abassurance-prediction-api:latest
+FROM python:3.11-bookworm
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openjdk-17-jre-headless ca-certificates curl unixodbc-dev \
+    && curl -fsSL https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb -o /tmp/ms.deb \
+    && dpkg -i /tmp/ms.deb \
+    && apt-get update \
+    && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 \
+    && rm -rf /var/lib/apt/lists/* /tmp/ms.deb
+WORKDIR /app
+COPY pyproject.toml ./
+COPY server/src ./server/src
+RUN python -m pip install --no-cache-dir ".[spark,api]"
 
 COPY --from=etl /opt/hop /opt/hop
 COPY --from=hop-java /opt/java/openjdk /opt/hop-java
 COPY server/src /app/server/src
 
 ENV PYTHONPATH=/app/server/src
+ENV PYSPARK_PYTHON=python3 SPARK_LOCAL_IP=127.0.0.1
 ENV HOP_HOME=/opt/hop
 ENV HOP_PROJECT_DIR=/opt/hop/project
 ENV HOP_CONFIG_FOLDER=/opt/hop/config
 ENV HOP_JAVA_HOME=/opt/hop-java
 ENV HOP_OPTIONS="-Xmx512m -Djava.awt.headless=true -Duser.timezone=UTC -Dfile.encoding=UTF-8"
+CMD ["python", "-m", "uvicorn", "abassurance.systems.monitoring.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
