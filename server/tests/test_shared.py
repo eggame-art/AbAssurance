@@ -20,6 +20,34 @@ def test_password_whitespace_is_preserved() -> None:
     assert environment.required("PASSWORD") == "  test-secret  "
 
 
+def test_secret_file_preserves_spaces_and_removes_final_newline(tmp_path):
+    path = tmp_path / "password"
+    path.write_text("  private-value  \n", encoding="utf-8")
+    env = Environment({"PASSWORD_FILE": str(path)})
+
+    assert env.secret("PASSWORD") == "  private-value  "
+    assert "private-value" not in repr(env)
+
+
+@pytest.mark.parametrize("content", [b"", b"  \n", b"x" * 4097, b"\xff"])
+def test_invalid_secret_file_does_not_leak_content(tmp_path, content):
+    path = tmp_path / "password"
+    path.write_bytes(content)
+
+    with pytest.raises(ConfigurationError) as captured:
+        Environment({"PASSWORD_FILE": str(path)}).secret("PASSWORD")
+
+    assert str(path) not in str(captured.value)
+    assert "xxxx" not in str(captured.value)
+
+
+def test_secret_file_fails_closed_without_environment_fallback(tmp_path):
+    with pytest.raises(ConfigurationError, match="Cannot read secret: PASSWORD"):
+        Environment({"PASSWORD_FILE": str(tmp_path / "missing")}).secret("PASSWORD", "fallback-value")
+    with pytest.raises(ConfigurationError, match="not both"):
+        Environment({"PASSWORD": "private-value", "PASSWORD_FILE": "missing"}).secret("PASSWORD")
+
+
 def test_boolean_configuration_accepts_surrounding_whitespace() -> None:
     environment = Environment({"ENABLED": " TRUE "})
 

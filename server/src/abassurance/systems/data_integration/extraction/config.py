@@ -45,7 +45,7 @@ def load_oracle_config(env: Environment) -> OracleConfig:
 
     return OracleConfig(
         user=env.get("ORACLE_USER", "ABASSURANCE"),
-        password=env.required("ORACLE_APP_PASSWORD"),
+        password=env.secret("ORACLE_APP_PASSWORD"),
         dsn=oracle_dsn,
         timeout=timeout,
     )
@@ -57,7 +57,7 @@ def load_sqlserver_config(env: Environment) -> SQLServerConfig:
 
     if dedicated and user.strip().lower() == "sa":
         raise ConfigurationError("SQL Server requires a dedicated service account")
-    password = env.required("SQLSERVER_PASSWORD", "" if dedicated else env.get("MSSQL_SA_PASSWORD"))
+    password = env.secret("SQLSERVER_PASSWORD", "" if dedicated else env.get("MSSQL_SA_PASSWORD"))
 
     return SQLServerConfig(
         host=env.get("SQLSERVER_HOST", "127.0.0.1"),

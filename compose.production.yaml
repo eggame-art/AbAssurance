@@ -15,7 +15,8 @@ services:
     networks: [data]
     entrypoint: ["/bin/bash", "/security/init.sh"]
     environment:
-      SQLSERVER_PASSWORD: ${SQLSERVER_PASSWORD:?Set a dedicated SQLSERVER_PASSWORD in .env}
+      SQLSERVER_PASSWORD_FILE: /run/secrets/sqlserver_app_password
+    secrets: [sqlserver_app_password]
     volumes:
       - ./deploy/sqlserver:/security:ro
   kafka:
@@ -45,22 +46,28 @@ services:
     image: abassurance-backend:${RELEASE_TAG:-local}
     platform: linux/amd64
     build: {context: ., dockerfile: server/Dockerfile.pipeline}
-    env_file: .env
+    secrets: [oracle_app_password, sqlserver_app_password]
     networks: [api, data, backend-egress]
     environment:
       ORACLE_HOST: oracle
       ORACLE_PORT: "1521"
       ORACLE_DSN: oracle:1521/${ORACLE_SERVICE:-FREEPDB1}
+      ORACLE_SERVICE: ${ORACLE_SERVICE:-FREEPDB1}
+      ORACLE_USER: ${ORACLE_USER:-ABASSURANCE}
+      ORACLE_APP_PASSWORD_FILE: /run/secrets/oracle_app_password
       SQLSERVER_HOST: sqlserver
       SQLSERVER_PORT: "1433"
       SQLSERVER_USER: abassurance_reader
-      SQLSERVER_PASSWORD: ${SQLSERVER_PASSWORD:?Set a dedicated SQLSERVER_PASSWORD in .env}
+      SQLSERVER_PASSWORD_FILE: /run/secrets/sqlserver_app_password
+      SQLSERVER_DATABASE: AssurePlus
+      SQLSERVER_ENCRYPT: "yes"
       SQLSERVER_REQUIRE_SERVICE_ACCOUNT: "true"
-      # Never pass SQL Server administrator credentials to the application.
-      MSSQL_SA_PASSWORD: ""
-      SQLCMDPASSWORD: ""
       SQLSERVER_TRUST_CERTIFICATE: "yes"
       KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+      KAFKA_GROUP_ID: ${KAFKA_GROUP_ID:-abassurance-check}
+      KAFKA_TIMEOUT: ${KAFKA_TIMEOUT:-30}
+      API_SPARK_MASTER: ${API_SPARK_MASTER:-local[2]}
+      API_MODEL_ID: ${API_MODEL_ID:-}
       HDFS_HTTP_URL: http://namenode:9870
       HADOOP_CONF_DIR: /opt/hadoop-conf
       AUTH_DB_PATH: /var/lib/abassurance/auth.sqlite
@@ -119,6 +126,12 @@ networks:
     internal: true
   # Spark needs outbound access to download its Maven connector.
   backend-egress:
+secrets:
+  # Compose reads these from the host/project environment, including .env.
+  oracle_app_password:
+    environment: ORACLE_APP_PASSWORD
+  sqlserver_app_password:
+    environment: SQLSERVER_PASSWORD
 volumes:
   oracle-data:
   sqlserver-data:

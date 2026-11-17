@@ -21,6 +21,7 @@ def runtime(tmp_path, monkeypatch):
     monkeypatch.setenv("HOP_PROJECT_DIR", str(job.parent))
     monkeypatch.setenv("HOP_HOME", str(job.parent.parent))
     monkeypatch.setenv("HOP_JAVA_HOME", "test-java-home")
+    monkeypatch.setenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:19092")
     monkeypatch.setattr(service, "prepare_hop_topics", Mock())
     monkeypatch.setattr(
         service,
@@ -98,6 +99,11 @@ def test_worker_uses_isolated_topics_and_only_reports_verified_output(monkeypatc
 
     def command(args, env, log):
         assert "PIPELINE_ADMIN_TOKEN" not in env
+        assert "MSSQL_SA_PASSWORD" not in env
+        assert "ORACLE_PASSWORD" not in env
+        if log.name == "spark.log":
+            assert "ORACLE_APP_PASSWORD" not in env
+            assert "SQLSERVER_PASSWORD_FILE" not in env
         assert env["KAFKA_TOPIC_PREFIX"] == f"web-integration-{queued.id}"
 
         calls.append((args, log.name))
