@@ -1,7 +1,7 @@
 import secrets
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Request, Response
 
 from abassurance.shared.environment import Environment
 from abassurance.shared.errors import ConfigurationError
@@ -12,7 +12,9 @@ from abassurance.systems.integration_api.service import IntegrationBusy, create_
 router = APIRouter(prefix="/pipeline/integrations", tags=["pipeline"])
 
 
-def require_admin(authorization: Annotated[str | None, Header()] = None) -> None:
+def require_admin(request: Request, authorization: Annotated[str | None, Header()] = None) -> None:
+    if getattr(request.state, "user", {}).get("role") == "admin":
+        return
     expected = Environment.from_file(PROJECT_ROOT / ".env").get("PIPELINE_ADMIN_TOKEN")
 
     if len(expected) < 32:

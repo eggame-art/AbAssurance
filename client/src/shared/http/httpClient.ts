@@ -1,4 +1,4 @@
-export const httpClient = {
+﻿export const httpClient = {
   get<T>(path: string, signal?: AbortSignal, timeoutMs = 10_000): Promise<T> {
     return request<T>(path, "GET", signal, undefined, undefined, timeoutMs);
   },
@@ -26,6 +26,7 @@ async function request<T>(
       method,
       headers: {
         Accept: "application/json",
+        "X-Requested-With": "AbAssurance",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(body === undefined ? {} : { "Content-Type": "application/json" }),
       },
@@ -50,6 +51,9 @@ async function request<T>(
     const detail =
       data && typeof data === "object" && "detail" in data ? data.detail : null;
 
+    if (typeof window !== "undefined" && response.status === 401 && path !== "/auth/login" && path !== "/auth/me") {
+      window.dispatchEvent(new Event("session-expired"));
+    }
     if (typeof detail === "string" && detail) throw new Error(detail);
 
     if (Array.isArray(detail)) {
