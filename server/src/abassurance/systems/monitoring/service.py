@@ -5,13 +5,14 @@ import shutil
 import subprocess
 from collections.abc import Callable
 from contextlib import closing
+from dataclasses import replace
 from pathlib import Path
 from urllib.parse import urlsplit
 from urllib.request import urlopen
 
 from abassurance.shared.environment import Environment
 from abassurance.shared.errors import ConfigurationError
-from abassurance.systems.data_integration.extraction.config import PROJECT_ROOT, OracleConfig, SQLServerConfig
+from abassurance.systems.data_integration.extraction.config import PROJECT_ROOT, OracleConfig, load_sqlserver_config
 from abassurance.systems.integration_api.service import latest_run
 from abassurance.systems.monitoring.schemas import ServiceId, ServiceStatus
 
@@ -91,17 +92,7 @@ def check_sqlserver(env: Environment) -> None:
 
     from abassurance.systems.data_integration.extraction.sqlserver import connect_sqlserver
 
-    config = SQLServerConfig(
-        host=env.get("SQLSERVER_HOST", "127.0.0.1"),
-        port=env.integer("SQLSERVER_PORT", "1433", 65535),
-        database=env.get("SQLSERVER_DATABASE", "AssurePlus"),
-        user=env.get("SQLSERVER_USER", "sa"),
-        password=env.required("SQLSERVER_PASSWORD", env.get("MSSQL_SA_PASSWORD")),
-        driver=env.get("SQLSERVER_DRIVER", "ODBC Driver 18 for SQL Server"),
-        encrypt=env.boolean("SQLSERVER_ENCRYPT", "yes"),
-        trust_server_certificate=env.boolean("SQLSERVER_TRUST_CERTIFICATE", "no"),
-        timeout=CHECK_TIMEOUT,
-    )
+    config = replace(load_sqlserver_config(env), timeout=CHECK_TIMEOUT)
 
     if config.driver not in pyodbc.drivers():
         raise CheckNotConfigured("SQL Server ODBC driver is not installed.")
@@ -171,8 +162,13 @@ async def check_service(
         message = await asyncio.wait_for(asyncio.to_thread(check, env), timeout=CHECK_TIMEOUT)
         return ServiceStatus(id=service_id, name=name, status="available", message=message)
 
-    except CheckNotConfigured as exc:
-        return ServiceStatus(id=service_id, name=name, status="not_checked", message=str(exc))
+    except CheckNotConfigured:
+        return ServiceStatus(
+            id=service_id,
+            name=name,
+            status="not_checked",
+            message="Service verification is not available. Check the server setup or run a complete integration.",
+        )
 
     except (ImportError, ConfigurationError):
         return ServiceStatus(

@@ -1,0 +1,93 @@
+name: abassurance-production
+services:
+  oracle:
+    extends: {file: compose.yaml, service: oracle}
+  sqlserver:
+    extends: {file: compose.yaml, service: sqlserver}
+    environment:
+      MSSQL_MEMORY_LIMIT_MB: ${MSSQL_MEMORY_LIMIT_MB:-2048}
+  sqlserver-init:
+    extends: {file: compose.yaml, service: sqlserver-init}
+  kafka:
+    extends: {file: compose.yaml, service: kafka}
+    profiles: !reset []
+    environment:
+      KAFKA_HEAP_OPTS: -Xms256m -Xmx512m
+  namenode:
+    extends: {file: compose.yaml, service: namenode}
+    profiles: !reset []
+    environment:
+      HADOOP_HEAPSIZE: "512"
+  datanode:
+    extends: {file: compose.yaml, service: datanode}
+    profiles: !reset []
+    environment:
+      HADOOP_HEAPSIZE: "512"
+  backend:
+    image: abassurance-backend:${RELEASE_TAG:-local}
+    platform: linux/amd64
+    build: {context: ., dockerfile: server/Dockerfile.pipeline}
+    env_file: .env
+    environment:
+      ORACLE_HOST: oracle
+      ORACLE_PORT: "1521"
+      ORACLE_DSN: oracle:1521/${ORACLE_SERVICE:-FREEPDB1}
+      SQLSERVER_HOST: sqlserver
+      SQLSERVER_PORT: "1433"
+      SQLSERVER_TRUST_CERTIFICATE: "yes"
+      KAFKA_BOOTSTRAP_SERVERS: kafka:19092
+      HDFS_HTTP_URL: http://namenode:9870
+      HADOOP_CONF_DIR: /opt/hadoop-conf
+      AUTH_DB_PATH: /var/lib/abassurance/auth.sqlite
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-true}
+      INTEGRATION_STATE_DIR: /var/lib/abassurance/integrations
+      INTEGRATION_HDFS_ROOT: hdfs://namenode:9000/abassurance-web
+      MODEL_OUTPUT_DIR: hdfs://namenode:9000/abassurance-models/churn
+      API_ALLOW_EXPERIMENTAL: ${API_ALLOW_EXPERIMENTAL:-false}
+      SOURCE_DATA_KIND: ${SOURCE_DATA_KIND:-demo}
+    volumes:
+      - pipeline-runs:/var/lib/abassurance
+      - spark-ivy:/root/.ivy2
+      - ./Infrastructure/hadoop/spark-core-site.xml:/opt/hadoop-conf/core-site.xml:ro
+      - ./Infrastructure/hadoop/hdfs-site.xml:/opt/hadoop-conf/hdfs-site.xml:ro
+    depends_on:
+      oracle: {condition: service_healthy}
+      sqlserver-init: {condition: service_completed_successfully}
+      kafka: {condition: service_healthy}
+      namenode: {condition: service_healthy}
+      datanode: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, python, -c, "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/openapi.json', timeout=5)"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    stop_grace_period: 60s
+  frontend:
+    image: abassurance-frontend:${RELEASE_TAG:-local}
+    build: {context: ., dockerfile: client/Dockerfile}
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?Set SITE_ADDRESS in .env}
+    ports: ["80:80", "443:443", "443:443/udp"]
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      backend: {condition: service_healthy}
+    healthcheck:
+      test: [CMD-SHELL, "wget -q -O /dev/null http://backend:8000/openapi.json && test -s /srv/index.html"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+volumes:
+  oracle-data:
+  sqlserver-data:
+  kafka-data:
+  hdfs-namenode:
+  hdfs-datanode:
+  pipeline-runs:
+  spark-ivy:
+  caddy-data:
+  caddy-config:
