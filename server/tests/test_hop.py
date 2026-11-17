@@ -63,6 +63,21 @@ def test_hop_credentials_are_private_not_command_arguments_and_are_removed(launc
     assert not paths[0].exists()
 
 
+def test_production_hop_refuses_admin_identity_and_password_fallback(launcher, monkeypatch):
+    monkeypatch.setenv("SQLSERVER_REQUIRE_SERVICE_ACCOUNT", "true")
+    monkeypatch.setenv("SQLSERVER_USER", "sa")
+
+    with pytest.raises(ValueError, match="dedicated service account"):
+        launcher.configuration()
+
+    monkeypatch.setenv("SQLSERVER_USER", "abassurance_reader")
+    monkeypatch.delenv("SQLSERVER_PASSWORD")
+    monkeypatch.setenv("MSSQL_SA_PASSWORD", "admin-only-secret")
+
+    with pytest.raises(ValueError, match="SQLSERVER_PASSWORD"):
+        launcher.configuration()
+
+
 def test_eight_native_pipelines_read_jdbc_publish_kafka_and_count_sources():
     project = PROJECT_ROOT / "Infrastructure/hop/project"
     pipelines = list((project / "pipelines").glob("*.hpl"))

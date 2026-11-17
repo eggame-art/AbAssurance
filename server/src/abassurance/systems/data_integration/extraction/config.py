@@ -52,12 +52,19 @@ def load_oracle_config(env: Environment) -> OracleConfig:
 
 
 def load_sqlserver_config(env: Environment) -> SQLServerConfig:
+    user = env.get("SQLSERVER_USER", "sa")
+    dedicated = env.boolean("SQLSERVER_REQUIRE_SERVICE_ACCOUNT", "false")
+
+    if dedicated and user.strip().lower() == "sa":
+        raise ConfigurationError("SQL Server requires a dedicated service account")
+    password = env.required("SQLSERVER_PASSWORD", "" if dedicated else env.get("MSSQL_SA_PASSWORD"))
+
     return SQLServerConfig(
         host=env.get("SQLSERVER_HOST", "127.0.0.1"),
         port=env.integer("SQLSERVER_PORT", "1433", 65535),
         database=env.get("SQLSERVER_DATABASE", "AssurePlus"),
-        user=env.get("SQLSERVER_USER", "sa"),
-        password=env.required("SQLSERVER_PASSWORD", env.get("MSSQL_SA_PASSWORD")),
+        user=user,
+        password=password,
         driver=env.get("SQLSERVER_DRIVER", "ODBC Driver 18 for SQL Server"),
         encrypt=env.boolean("SQLSERVER_ENCRYPT", "yes"),
         trust_server_certificate=env.boolean("SQLSERVER_TRUST_CERTIFICATE", "no"),

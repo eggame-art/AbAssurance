@@ -13,6 +13,11 @@ services:
   sqlserver-init:
     extends: {file: compose.yaml, service: sqlserver-init}
     networks: [data]
+    entrypoint: ["/bin/bash", "/security/init.sh"]
+    environment:
+      SQLSERVER_PASSWORD: ${SQLSERVER_PASSWORD:?Set a dedicated SQLSERVER_PASSWORD in .env}
+    volumes:
+      - ./deploy/sqlserver:/security:ro
   kafka:
     extends: {file: compose.yaml, service: kafka}
     profiles: !reset []
@@ -48,6 +53,12 @@ services:
       ORACLE_DSN: oracle:1521/${ORACLE_SERVICE:-FREEPDB1}
       SQLSERVER_HOST: sqlserver
       SQLSERVER_PORT: "1433"
+      SQLSERVER_USER: abassurance_reader
+      SQLSERVER_PASSWORD: ${SQLSERVER_PASSWORD:?Set a dedicated SQLSERVER_PASSWORD in .env}
+      SQLSERVER_REQUIRE_SERVICE_ACCOUNT: "true"
+      # Never pass SQL Server administrator credentials to the application.
+      MSSQL_SA_PASSWORD: ""
+      SQLCMDPASSWORD: ""
       SQLSERVER_TRUST_CERTIFICATE: "yes"
       KAFKA_BOOTSTRAP_SERVERS: kafka:19092
       HDFS_HTTP_URL: http://namenode:9870
