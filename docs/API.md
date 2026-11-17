@@ -49,8 +49,11 @@ Un modèle expérimental n'est pas une validation métier du risque.
 |---|---|
 | 401 | Session absente, expirée ou identifiants incorrects |
 | 403 | Accès refusé ou en-tête requis manquant |
+| 408 | Corps de requête reçu trop lentement |
+| 413 | Corps de requête supérieur à 64 Kio |
 | 404 | Données consolidées introuvables |
 | 409 | Intégration déjà en attente ou en cours |
 | 422 | Paramètres invalides |
+| 429 | Trop de requêtes ou file Spark pleine ; attendre le délai Retry-After |
 | 503 | Service ou modèle indisponible |
 | 504 | Délai de traitement dépassé |

@@ -11,6 +11,8 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from abassurance.shared.request_limits import RequestLimits
+
 COOKIE = "abassurance_session"
 TTL = 8 * 3600
 
@@ -107,6 +109,23 @@ def current_user(request):
 async def protect(request: Request, call_next):
     path = request.url.path
 
+    if not hasattr(request.app.state, "request_limits"):
+        request.app.state.request_limits = RequestLimits()
+    limits: RequestLimits = request.app.state.request_limits
+
+    if path != "/auth/status":
+        # Do not trust arbitrary X-Forwarded-For headers supplied by callers.
+        peer = request.client.host if request.client else "unknown"
+        retry = limits.retry_after(f"peer:{peer}", 300)
+        if not retry and path == "/auth/login":
+            retry = limits.retry_after("login:global", 60) or limits.retry_after(f"login:{peer}", 20)
+        if retry:
+            return JSONResponse(
+                status_code=429,
+                content={"detail": "Too many requests. Try again later."},
+                headers={"Retry-After": str(retry), "Cache-Control": "no-store"},
+            )
+
     public = path in ("/auth/login", "/auth/me", "/auth/status")
 
     if request.method not in ("GET", "HEAD", "OPTIONS"):
@@ -123,6 +142,14 @@ async def protect(request: Request, call_next):
 
         if user["role"] != "admin" and not (path.startswith("/me/data/") or path == "/auth/logout"):
             return JSONResponse(status_code=403, content={"detail": "Administrator access required."})
+        if path != "/auth/logout":
+            retry = limits.retry_after(f"account:{user['username']}", 120)
+            if retry:
+                return JSONResponse(
+                    status_code=429,
+                    content={"detail": "Too many requests. Try again later."},
+                    headers={"Retry-After": str(retry), "Cache-Control": "no-store"},
+                )
 
     response = await call_next(request)
     response.headers["Cache-Control"] = "no-store"

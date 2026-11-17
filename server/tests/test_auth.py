@@ -56,6 +56,51 @@ def test_status_is_public_without_exposing_routes(client):
     assert client.get("/auth/status").json() == {"status": "ok"}
 
 
+def test_login_limit_cannot_be_bypassed_by_changing_username(client, monkeypatch):
+    hashing = Mock(wraps=service.password_hash)
+    monkeypatch.setattr(service, "password_hash", hashing)
+    for i in range(20):
+        assert client.post("/auth/login", json={"username": f"unknown-{i}", "password": "wrong"}).status_code == 401
+    response = client.post("/auth/login", json={"username": "another-account", "password": "wrong"})
+    assert response.status_code == 429
+    assert int(response.headers["Retry-After"]) > 0
+    assert hashing.call_count == 20
+
+
+def test_large_login_is_rejected_before_password_hashing(client, monkeypatch):
+    hashing = Mock(wraps=service.password_hash)
+    monkeypatch.setattr(service, "password_hash", hashing)
+    assert client.post("/auth/login", content=b"x" * 65537).status_code == 413
+    hashing.assert_not_called()
+
+
+def test_account_limit_returns_429_and_logout_still_works(client):
+    login(client, "admin")
+    limits = client.app.state.request_limits
+    for _ in range(120):
+        limits.retry_after("account:admin", 120)
+    response = client.get("/docs")
+    assert response.status_code == 429
+    assert "Retry-After" in response.headers
+    assert client.post("/auth/logout").status_code == 200
+    assert client.get("/auth/status").status_code == 200
+
+
+@pytest.mark.parametrize("username,path", [("user", "/me/data/clients"), ("admin", "/model")])
+def test_spark_queue_full_is_reported_as_429(client, username, path):
+    from abassurance.shared.spark_runtime import SparkBusy
+
+    async def busy(action, **kwargs):
+        raise SparkBusy("internal queue details")
+
+    client.app.state.spark_runtime = SimpleNamespace(run=busy, close=Mock())
+    login(client, username)
+    response = client.get(path)
+    assert response.status_code == 429
+    assert response.headers["Retry-After"] == "3"
+    assert "internal queue details" not in response.text
+
+
 def test_login_without_client_address(client):
     request = Request({"type": "http", "headers": [], "client": None})
     response = Response()
