@@ -19,7 +19,13 @@ def get_service(request: Request) -> PredictionService:
     return service
 
 
-@router.get("/health", response_model=HealthResponse)
+@router.get(
+    "/health",
+    response_model=HealthResponse,
+    summary="Vérifier le moteur de prédiction",
+    description="Administrateur. Indique si le modèle est chargé et disponible. "
+    "Ne charge pas le modèle ; répond 503 tant qu'il n'est pas disponible.",
+)
 def health(request: Request, response: Response) -> HealthResponse:
     service = getattr(request.app.state, "prediction_service", None)
     available = service is not None and service.available
@@ -35,12 +41,24 @@ def health(request: Request, response: Response) -> HealthResponse:
     )
 
 
-@router.get("/model", response_model=ModelInfo)
+@router.get(
+    "/model",
+    response_model=ModelInfo,
+    summary="Consulter le modèle",
+    description="Administrateur. Renvoie l'algorithme, les variables et les métriques du modèle. "
+    "Répond 503 si le modèle est absent ou indisponible.",
+)
 def model_info(service: Annotated[PredictionService, Depends(get_service)]) -> ModelInfo:
     return service.info
 
 
-@router.post("/predict", response_model=PredictionResponse)
+@router.post(
+    "/predict",
+    response_model=PredictionResponse,
+    summary="Prédire un risque de résiliation",
+    description="Administrateur. Reçoit les caractéristiques d'un contrat en JSON et renvoie "
+    "la probabilité de résiliation, la classe prédite et l'identifiant du modèle.",
+)
 def predict(
     contract: PredictionRequest, service: Annotated[PredictionService, Depends(get_service)]
 ) -> PredictionResponse:
