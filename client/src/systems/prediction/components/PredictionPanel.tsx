@@ -1,3 +1,4 @@
+import { ContractPrediction } from "./ContractPrediction";
 import { useEffect, useState } from "react";
 import { predictionController } from "../controllers/predictionController";
 import type {
@@ -18,6 +19,7 @@ const labels: Record<Feature, string> = {
 };
 
 export function PredictionPanel() {
+  const [mode, setMode] = useState<"contract" | "manual">("contract");
   const [model, setModel] = useState<ModelInfo | null>(null);
   const [values, setValues] = useState<Partial<Record<Feature, string>>>({});
   const [result, setResult] = useState<PredictionResponse | null>(null);
@@ -96,12 +98,35 @@ export function PredictionPanel() {
       </button>
       {loading && <p role="status">Chargement du modèle...</p>}
       {error && <p role="alert">{error}</p>}
-      {model && (
+      <label>
+        Mode de test{" "}
+        <select
+          disabled={submitting}
+          value={mode}
+          onChange={(event) => {
+            setMode(event.target.value as "contract" | "manual");
+            setResult(null);
+          }}
+        >
+          <option value="contract">Choisir un client et son contrat</option>
+          <option value="manual">Saisie manuelle</option>
+        </select>
+      </label>
+      {model && (!model.business_validated || model.status === "experimental")}
+      {model && mode === "contract" && (
+        <ContractPrediction
+          key={`${model.model_id}:${refresh}`}
+          onResult={setResult}
+        />
+      )}
+      {model && mode === "manual" && (
         <>
           <p>
             Modèle : {model.model_id} ({model.algorithm})
           </p>
-          {!model.business_validated || model.status === "experimental"}
+          {(!model.business_validated || model.status === "experimental") && (
+            <p>Mod?le exp?rimental.</p>
+          )}
           <p>Champ vide</p>
           <form
             className={styles.form}
@@ -138,9 +163,10 @@ export function PredictionPanel() {
       {result && (
         <section aria-label="Résultat de prédiction">
           <h3>Résultat</h3>
-          {!result.business_validated || result.status === "experimental"}
+          {(!result.business_validated || result.status === "experimental") && (
+            <p>Résultat</p>
+          )}
           <dl className={styles.result}>
-            <dt>Risque estimé</dt>
             <dd>
               {(result.cancellation_probability * 100).toLocaleString("fr-FR", {
                 maximumFractionDigits: 2,

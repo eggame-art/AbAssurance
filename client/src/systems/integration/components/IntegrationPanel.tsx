@@ -12,7 +12,7 @@ const statuses = {
 
 const stages = {
   pending: "En attente de démarrage",
-  etl: "Extraction et publication des données",
+  etl: "Extraction Apache Hop et publication Kafka",
   spark: "Traitement et stockage des données",
   verification: "Vérification des données consolidées",
   completed: "Intégration terminée",
@@ -24,7 +24,6 @@ interface IntegrationPanelProps {
 
 export function IntegrationPanel({ onFinished }: IntegrationPanelProps) {
   const [run, setRun] = useState<IntegrationRun | null>(null);
-  const [token, setToken] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
@@ -85,17 +84,16 @@ export function IntegrationPanel({ onFinished }: IntegrationPanelProps) {
   async function start(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (submitting || active || !token.trim()) return;
+    if (submitting || active) return;
 
     setSubmitting(true);
     setError("");
 
     try {
-      const started = await pipelineController.startIntegration(token.trim());
+      const started = await pipelineController.startIntegration("");
 
       previousStatus.current = started.status;
       setRun(started);
-      setToken("");
     } catch (error) {
       setError(
         error instanceof Error
@@ -112,19 +110,7 @@ export function IntegrationPanel({ onFinished }: IntegrationPanelProps) {
       <h2>Intégration des données</h2>
 
       <form className={styles.form} onSubmit={start}>
-        <label htmlFor="admin-key">Clé administrateur</label>
-
-        <input
-          id="admin-key"
-          type="password"
-          autoComplete="off"
-          required
-          value={token}
-          onChange={(event) => setToken(event.target.value)}
-          disabled={active || submitting}
-        />
-
-        <button type="submit" disabled={active || submitting || !token.trim()}>
+        <button type="submit" disabled={active || submitting}>
           {submitting ? "Démarrage..." : "Lancer l'intégration"}
         </button>
       </form>

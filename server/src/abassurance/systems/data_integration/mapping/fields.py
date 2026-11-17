@@ -15,10 +15,8 @@ def optional_integer(value: object, field: str) -> int | None:
     if isinstance(value, bool):
         raise ValueError(f"{field} must be an integer")
 
-    if isinstance(value, int):
-        return value
-
     if isinstance(value, str) and value.strip().lstrip("+-").isdigit():
-        return int(value)
-
-    raise ValueError(f"{field} must be an integer")
+        value = int(value)
+    if not isinstance(value, int) or not -(2**31) <= value < 2**31:
+        raise ValueError(f"{field} must fit a 32-bit integer")
+    return value

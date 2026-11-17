@@ -5,63 +5,63 @@ from unicodedata import normalize
 from abassurance.systems.data_integration.mapping.fields import optional_text
 
 CATEGORIES = {
-    "customer_status": {"ACTIF": "ACTIF", "ACTIVE": "ACTIF", "INACTIF": "INACTIF", "INACTIVE": "INACTIF"},
+    "customer_status": {"ACTIF": "ACTIVE", "ACTIVE": "ACTIVE", "INACTIF": "INACTIVE", "INACTIVE": "INACTIVE"},
     "contract_status": {
-        "ACTIF": "ACTIF",
-        "ACTIVE": "ACTIF",
-        "RESILIE": "RESILIE",
-        "CANCELLED": "RESILIE",
-        "CANCELED": "RESILIE",
-        "EXPIRE": "EXPIRE",
-        "EXPIRED": "EXPIRE",
-        "SUSPENDU": "SUSPENDU",
-        "SUSPENDED": "SUSPENDU",
+        "ACTIF": "ACTIVE",
+        "ACTIVE": "ACTIVE",
+        "RESILIE": "CANCELLED",
+        "CANCELLED": "CANCELLED",
+        "CANCELED": "CANCELLED",
+        "EXPIRE": "EXPIRED",
+        "EXPIRED": "EXPIRED",
+        "SUSPENDU": "SUSPENDED",
+        "SUSPENDED": "SUSPENDED",
     },
     "claim_status": {
-        "OUVERT": "OUVERT",
-        "OPEN": "OUVERT",
-        "CLOS": "CLOS",
-        "CLOSED": "CLOS",
-        "EN_COURS": "EN_COURS",
-        "IN_PROGRESS": "EN_COURS",
-        "REJETE": "REJETE",
-        "REJECTED": "REJETE",
+        "OUVERT": "OPEN",
+        "OPEN": "OPEN",
+        "CLOS": "CLOSED",
+        "CLOSED": "CLOSED",
+        "EN_COURS": "IN_PROGRESS",
+        "IN_PROGRESS": "IN_PROGRESS",
+        "REJETE": "REJECTED",
+        "REJECTED": "REJECTED",
     },
     "payment_method": {
-        "VIREMENT": "VIREMENT",
-        "BANK_TRANSFER": "VIREMENT",
-        "CARTE": "CARTE",
-        "CARD": "CARTE",
-        "PRELEVEMENT": "PRELEVEMENT",
-        "DIRECT_DEBIT": "PRELEVEMENT",
-        "CHEQUE": "CHEQUE",
-        "CHECK": "CHEQUE",
-        "ESPECES": "ESPECES",
-        "CASH": "ESPECES",
+        "VIREMENT": "BANK_TRANSFER",
+        "BANK_TRANSFER": "BANK_TRANSFER",
+        "CARTE": "CARD",
+        "CARD": "CARD",
+        "PRELEVEMENT": "DIRECT_DEBIT",
+        "DIRECT_DEBIT": "DIRECT_DEBIT",
+        "CHEQUE": "CHECK",
+        "CHECK": "CHECK",
+        "ESPECES": "CASH",
+        "CASH": "CASH",
     },
     "transaction_status": {
-        "COMPLETED": "TERMINE",
-        "TERMINE": "TERMINE",
-        "PENDING": "EN_ATTENTE",
-        "EN_ATTENTE": "EN_ATTENTE",
-        "FAILED": "ECHEC",
-        "ECHEC": "ECHEC",
-        "REFUNDED": "REMBOURSE",
-        "REMBOURSE": "REMBOURSE",
-        "CANCELLED": "ANNULE",
-        "CANCELED": "ANNULE",
-        "ANNULE": "ANNULE",
+        "COMPLETED": "COMPLETED",
+        "TERMINE": "COMPLETED",
+        "PENDING": "PENDING",
+        "EN_ATTENTE": "PENDING",
+        "FAILED": "FAILED",
+        "ECHEC": "FAILED",
+        "REFUNDED": "REFUNDED",
+        "REMBOURSE": "REFUNDED",
+        "CANCELLED": "CANCELLED",
+        "CANCELED": "CANCELLED",
+        "ANNULE": "CANCELLED",
     },
     "product_type": {
-        "AUTO": "AUTO",
-        "AUTOMOBILE": "AUTO",
-        "CAR": "AUTO",
-        "HABITATION": "HABITATION",
-        "HOME": "HABITATION",
-        "SANTE": "SANTE",
-        "HEALTH": "SANTE",
-        "VIE": "VIE",
-        "LIFE": "VIE",
+        "AUTO": "CAR",
+        "AUTOMOBILE": "CAR",
+        "CAR": "CAR",
+        "HABITATION": "HOME",
+        "HOME": "HOME",
+        "SANTE": "HEALTH",
+        "HEALTH": "HEALTH",
+        "VIE": "LIFE",
+        "LIFE": "LIFE",
     },
 }
 
@@ -130,11 +130,17 @@ def normalize_amount(value: object, *, multiplier: int = 1) -> str | None:
     if amount < 0:
         raise ValueError(f"Invalid amount: {value!r}")
 
-    return str((amount * multiplier).quantize(Decimal("0.01")))
+    result = (amount * multiplier).quantize(Decimal("0.01"))
+    if result >= Decimal("10000000000000000"):
+        raise ValueError("Amount exceeds decimal(18,2)")
+    return str(result)
 
 
 def normalize_score(value: object) -> str | None:
     if value is None:
         return None
 
-    return str(_decimal(value, "fraud score"))
+    result = _decimal(value, "score").quantize(Decimal("0.01"))
+    if abs(result) >= Decimal("10000000000000000"):
+        raise ValueError("Score exceeds decimal(18,2)")
+    return str(result)

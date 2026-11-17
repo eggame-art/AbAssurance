@@ -76,7 +76,7 @@ services:
       - .:/app
 
   kafka:
-    profiles: ["kafka", "spark", "hdfs", "talaxie"]
+    profiles: ["kafka", "spark", "hdfs", "hop"]
     image: apache/kafka:4.1.2
     environment:
       KAFKA_NODE_ID: "1"
@@ -117,12 +117,12 @@ services:
       kafka:
         condition: service_healthy
 
-  talaxie-publish:
-    profiles: ["talaxie"]
-    image: abassurance-talaxie:9.0.2
+  hop-publish:
+    profiles: ["hop"]
+    image: abassurance-hop:2.20.0
     platform: linux/amd64
     build:
-      context: ./Infrastructure/talaxie
+      context: ./Infrastructure/hop
     env_file: .env
     environment:
       ORACLE_HOST: oracle

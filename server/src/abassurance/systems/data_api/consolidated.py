@@ -1,5 +1,7 @@
 import json
 import re
+from datetime import date, datetime
+from decimal import Decimal
 
 from abassurance.shared.environment import Environment
 from abassurance.shared.errors import ConfigurationError
@@ -29,7 +31,13 @@ def committed_run(integration_id: str | None = None) -> IntegrationRun:
 
 
 def get_consolidated(
-    spark, entity: DataEntity, offset: int, limit: int, integration_id: str | None
+    spark,
+    entity: DataEntity,
+    offset: int,
+    limit: int,
+    integration_id: str | None,
+    owner: tuple[str, str] | None = None,
+    customer_filter: str | None = None,
 ) -> ConsolidatedResponse:
     from pyspark.sql import functions as F
 
@@ -63,6 +71,27 @@ def get_consolidated(
     dataset = "customers" if entity == "clients" else entity
     frame = read_snapshot(spark, root, dataset, manifest=manifest)
 
+    if owner is not None:
+        from abassurance.systems.data_integration.mapping.identifiers import make_id
+
+        source, source_id = owner
+        customer_id = make_id(source, source_id, "customers")
+        if dataset == "customers":
+            frame = frame.filter((F.col("customer_id") == customer_id) & (F.col("source_system") == source))
+        elif dataset == "contracts":
+            frame = frame.filter((F.col("customer_id") == customer_id) & (F.col("source_system") == source))
+        else:
+            contracts = read_snapshot(spark, root, "contracts", manifest=manifest)
+            own_contracts = contracts.filter(
+                (F.col("customer_id") == customer_id) & (F.col("source_system") == source)
+            ).select("contract_id")
+            frame = frame.filter(F.col("source_system") == source).join(own_contracts, "contract_id", "left_semi")
+
+    if customer_filter is not None:
+        if dataset != "contracts":
+            raise ValueError("Customer filtering is only supported for contracts")
+        frame = frame.filter(F.col("customer_id") == customer_filter)
+
     total = frame.count()
     columns = [column for column in frame.columns if column != "_kafka"]
 
@@ -87,16 +116,25 @@ def get_consolidated(
     records = []
 
     for row in joined.collect():
-        data = row.data.asDict()
+        data = {
+            key: value.isoformat(timespec="seconds")
+            if isinstance(value, datetime)
+            else value.isoformat()
+            if isinstance(value, date)
+            else str(value)
+            if isinstance(value, Decimal)
+            else value
+            for key, value in row.data.asDict().items()
+        }
         validate_record_fields(data, dataset, allow_legacy=True)
 
-        envelope = json.loads(row.original)
+        envelope = json.loads(row.original, parse_float=Decimal)
 
         if envelope["source_system"] != data["source_system"] or envelope["entity"] != dataset:
             raise ValueError("Archived source does not match the consolidated record")
 
         original = {
-            key: str(value) if type(value) is int and abs(value) > 2**53 - 1 else value
+            key: str(value) if isinstance(value, Decimal) or (type(value) is int and abs(value) > 2**53 - 1) else value
             for key, value in envelope["data"].items()
         }
 

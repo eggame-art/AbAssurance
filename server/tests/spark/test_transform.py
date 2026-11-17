@@ -1,6 +1,8 @@
 import json
 from collections import Counter
 from copy import deepcopy
+from datetime import date, datetime
+from decimal import Decimal
 
 import pytest
 from abassurance.systems.data_integration.cleaning import clean_datasets
@@ -11,7 +13,19 @@ pytestmark = pytest.mark.spark_integration
 
 
 def records_without_provenance(frame):
-    return [row.asDict(recursive=True) for row in frame.drop("_kafka").collect()]
+    return [
+        {
+            key: value.isoformat(timespec="seconds")
+            if isinstance(value, datetime)
+            else value.isoformat()
+            if isinstance(value, date)
+            else str(value)
+            if isinstance(value, Decimal)
+            else value
+            for key, value in row.asDict(recursive=True).items()
+        }
+        for row in frame.drop("_kafka").collect()
+    ]
 
 
 def test_distributed_mapping_16_records_republications_and_exact_values(spark, demo_sources, envelopes):
@@ -123,7 +137,10 @@ def test_invalid_rows_cascade_and_corrections_are_not_hidden_by_duplicates(spark
         assert any("Orphan customer_id" in reason for reason in reasons)
         assert any("Orphan contract_id" in reason for reason in reasons)
 
-        assert {row["contract_id"] for row in actual["contracts"]} == {"9411294f-5a8b-53fd-a585-857906e1a028", "700ac77b-70ea-5fa3-9de1-c2e95326af48"}
+        assert {row["contract_id"] for row in actual["contracts"]} == {
+            "9411294f-5a8b-53fd-a585-857906e1a028",
+            "700ac77b-70ea-5fa3-9de1-c2e95326af48",
+        }
 
     finally:
         snapshot.close()

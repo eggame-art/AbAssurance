@@ -5,6 +5,7 @@ export type IntegrationRun = {
   created_at: string;
   started_at: string | null;
   finished_at: string | null;
+  etl_engine: "apache-hop" | null;
   etl_verified_at: string | null;
   spark_verified_at: string | null;
   snapshot: string | null;

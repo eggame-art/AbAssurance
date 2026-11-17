@@ -52,3 +52,12 @@ def test_web_api_keeps_prediction_validation_serializable(monkeypatch, token):
 
         assert response.status_code == 422
         assert response.json()["detail"][0]["loc"] == ["body", "payment_amount_known_total"]
+
+
+@pytest.fixture(autouse=True)
+def isolate_route_contracts_from_authentication(monkeypatch):
+    async def passthrough(request, call_next):
+        return await call_next(request)
+
+    monkeypatch.setattr("abassurance.systems.monitoring.app.protect", passthrough)
+    monkeypatch.setattr("abassurance.systems.prediction_api.app.protect", passthrough)

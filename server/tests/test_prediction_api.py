@@ -348,3 +348,12 @@ def test_injected_spark_is_never_stopped_by_model_service(mocked_loader, fail):
         assert not service.available
     create.assert_not_called()
     runtime.spark.stop.assert_not_called()
+
+
+@pytest.fixture(autouse=True)
+def isolate_route_contracts_from_authentication(monkeypatch):
+    async def passthrough(request, call_next):
+        return await call_next(request)
+
+    monkeypatch.setattr("abassurance.systems.monitoring.app.protect", passthrough)
+    monkeypatch.setattr("abassurance.systems.prediction_api.app.protect", passthrough)

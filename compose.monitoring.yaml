@@ -25,6 +25,8 @@ services:
       - "8000"
     environment:
       PYTHONPATH: /app/server/src
+      ORACLE_HOST: oracle
+      ORACLE_PORT: "1521"
       ORACLE_DSN: oracle:1521/${ORACLE_SERVICE:-FREEPDB1}
       SQLSERVER_HOST: sqlserver
       SQLSERVER_PORT: "1433"

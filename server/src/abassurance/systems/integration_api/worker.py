@@ -5,11 +5,15 @@ from abassurance.shared.storage import write_json_atomic
 from abassurance.systems.messaging.config import load_kafka_config
 from abassurance.systems.spark_pipeline.hdfs import read_snapshot
 from abassurance.systems.spark_pipeline.run import create_session, run_available
+from abassurance.systems.spark_pipeline.schemas import entity_schema
 
 
 def verify_snapshot(spark, state: str, manifest: dict) -> None:
     for entity, expected in manifest["counts"]["accepted"].items():
-        actual = read_snapshot(spark, state, entity, manifest=manifest).count()
+        frame = read_snapshot(spark, state, entity, manifest=manifest)
+        if frame.drop("_kafka").schema.simpleString() != entity_schema(entity).simpleString():
+            raise ValueError(f"Persisted schema differs for {entity}")
+        actual = frame.count()
 
         if actual != expected:
             raise ValueError(f"Persisted snapshot count differs for {entity}")

@@ -1,0 +1,20 @@
+{
+  "name": "oracle",
+  "rdbms": {
+    "GENERIC": {
+      "pluginId": "GENERIC",
+      "pluginName": "Generic database",
+      "accessType": 0,
+      "hostname": "",
+      "databaseName": "",
+      "port": "",
+      "username": "${ORACLE_USER}",
+      "password": "${ORACLE_APP_PASSWORD}",
+      "manualUrl": "jdbc:oracle:thin:@//${ORACLE_HOST}:${ORACLE_PORT}/${ORACLE_SERVICE}",
+      "attributes": {
+        "CUSTOM_DRIVER_CLASS": "oracle.jdbc.OracleDriver",
+        "SUPPORTS_TIMESTAMP_DATA_TYPE": "Y"
+      }
+    }
+  }
+}

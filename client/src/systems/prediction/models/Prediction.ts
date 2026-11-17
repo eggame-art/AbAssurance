@@ -26,3 +26,16 @@ export type PredictionResponse = {
   status: "experimental" | "data_validated";
   business_validated: boolean;
 };
+
+export type ContractPredictionRequest = {
+  customer_id: string;
+  contract_id: string;
+  integration_id: string;
+  observation_date: string;
+};
+
+export type ContractPredictionResponse = ContractPredictionRequest & {
+  snapshot: string;
+  features: PredictionRequest;
+  prediction: PredictionResponse;
+};

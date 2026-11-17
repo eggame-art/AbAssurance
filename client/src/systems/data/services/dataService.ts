@@ -29,7 +29,7 @@ function isSourceResponse(
   if (!isRecord(data)) return false;
   if (
     data.source !== source ||
-    !["demo", "unspecified"].includes(String(data.data_kind))
+    (data.data_kind !== "demo" && data.data_kind !== "unspecified")
   )
     return false;
 
@@ -106,6 +106,7 @@ export const dataService = {
     limit: number,
     integrationId?: string,
     signal?: AbortSignal,
+    customerId?: string,
   ): Promise<ConsolidatedResponse> {
     const query = new URLSearchParams({
       offset: String(offset),
@@ -113,6 +114,7 @@ export const dataService = {
     });
 
     if (integrationId) query.set("integration_id", integrationId);
+    if (customerId) query.set("customer_id", customerId);
 
     const data = await httpClient.get<unknown>(
       `/data/consolidated/${entity}?${query}`,
@@ -122,6 +124,9 @@ export const dataService = {
 
     if (!isConsolidatedResponse(data, entity, offset, limit, integrationId)) {
       throw new Error("Invalid consolidated data response.");
+    }
+    if (customerId && !data.records.every((record) => record.data.customer_id === customerId)) {
+      throw new Error("Invalid customer contracts response.");
     }
 
     return data;

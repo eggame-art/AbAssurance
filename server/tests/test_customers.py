@@ -62,7 +62,7 @@ def test_complete_oracle_customer():
     assert result["birth_date"] == "1990-05-12"
     assert result["postal_code"] == "75001"
     assert result["tax_number"] == "123456789"
-    assert result["customer_status"] == "ACTIF"
+    assert result["customer_status"] == "ACTIVE"
     assert result["created_at"] == "2025-01-15T10:30:00"
     assert result["loyalty_score"] is None
 

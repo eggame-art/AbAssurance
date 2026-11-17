@@ -19,7 +19,7 @@ START_LOCK = Lock()
 
 STAGE_LABELS = {
     "pending": "Preparation",
-    "etl": "Talaxie into Kafka",
+    "etl": "Apache Hop into Kafka",
     "spark": "Spark into HDFS",
     "verification": "Snapshot verification",
     "completed": "Finalization",
@@ -59,14 +59,14 @@ def create_run() -> IntegrationRun:
             raise IntegrationBusy
 
         env = Environment.from_file(PROJECT_ROOT / ".env")
-        job = Path(env.required("TALAXIE_JOB_DIR"))
+        job = Path(env.required("HOP_PROJECT_DIR"))
 
-        if not (job / "ExtractPublish/extractpublish_0_1.jar").is_file():
+        if not (job / "workflows/integrate.hwf").is_file():
             raise FileNotFoundError("ETL job is not installed")
 
         validate_hdfs_root(env.get("INTEGRATION_HDFS_ROOT", "hdfs://namenode:9000/abassurance-web"))
 
-        run = IntegrationRun(id=uuid4().hex, status="queued", created_at=datetime.now(UTC))
+        run = IntegrationRun(id=uuid4().hex, status="queued", created_at=datetime.now(UTC), etl_engine="apache-hop")
         save_run(run)
 
         return run
@@ -118,42 +118,71 @@ def load_environment(run_id: str) -> dict[str, str]:
     return env
 
 
-def execute_etl(run: IntegrationRun, env: dict[str, str], folder: Path) -> dict:
-    job = Path(env["TALAXIE_JOB_DIR"])
+def prepare_hop_topics(config) -> None:
+    from confluent_kafka.admin import AdminClient
+    from confluent_kafka.cimpl import NewTopic
 
+    admin = AdminClient({"bootstrap.servers": config.bootstrap_servers})
+    futures = admin.create_topics(
+        [NewTopic(topic, num_partitions=1, replication_factor=1) for topic in config.topics()]
+    )
+    for future in futures.values():
+        future.result(timeout=15)
+
+
+def published_counts(config) -> dict[str, int]:
+    from confluent_kafka import Consumer, TopicPartition
+
+    consumer = Consumer({"bootstrap.servers": config.bootstrap_servers, "group.id": "hop-verification-" + uuid4().hex})
+    try:
+        metadata = consumer.list_topics(timeout=10)
+        counts = {}
+        from abassurance.systems.messaging.config import SOURCE_TABLES
+
+        for source, tables in SOURCE_TABLES.items():
+            for entity in tables:
+                topic = config.topic(source, entity)
+                info = metadata.topics[topic]
+                if info.error:
+                    raise RuntimeError("Kafka topic metadata unavailable")
+                total = 0
+                for partition in info.partitions:
+                    low, high = consumer.get_watermark_offsets(
+                        TopicPartition(topic, partition), timeout=10, cached=False
+                    )
+                    total += high - low
+                counts[f"{source}:{entity}"] = total
+        return counts
+    finally:
+        consumer.close()
+
+
+def execute_etl(run: IntegrationRun, env: dict[str, str], folder: Path) -> dict:
+    from abassurance.systems.messaging.config import SOURCE_TABLES, KafkaConfig
+
+    config = KafkaConfig(bootstrap_servers=env["KAFKA_BOOTSTRAP_SERVERS"], topic_prefix=env["KAFKA_TOPIC_PREFIX"])
     run.status = "running"
     run.stage = "etl"
     run.started_at = datetime.now(UTC)
     save_run(run)
-
-    command = [
-        env["TALAXIE_JAVA"],
-        "-Duser.timezone=UTC",
-        "-Dfile.encoding=UTF-8",
-        "-cp",
-        f"{job}/ExtractPublish:{job}/lib/*:{job}/ExtractPublish/extractpublish_0_1.jar",
-        "abassurance.extractpublish_0_1.ExtractPublish",
-        "--context=Default",
-    ]
-
-    run_command(command, env, folder / "etl.log")
-
-    output = (folder / "etl.log").read_text("utf-8", errors="replace")
-    match = re.search(r"^TALAXIE status=succeeded published=(\{.*\})$", output, re.MULTILINE)
-
-    if not match:
-        raise ValueError("ETL acknowledgment missing")
-
-    published = json.loads(match.group(1))
-
-    if not isinstance(published, dict) or not all(type(value) is int and value >= 0 for value in published.values()):
-        raise ValueError("ETL acknowledgment invalid")
-
+    prepare_hop_topics(config)
+    counts_dir = folder / "hop-counts"
+    env["HOP_COUNTS_DIR"] = str(counts_dir)
+    home = Path(env["HOP_HOME"])
+    run_command([sys.executable, str(home / "run.py")], env, folder / "etl.log")
+    expected = {}
+    for source, tables in SOURCE_TABLES.items():
+        for entity in tables:
+            text = (counts_dir / f"{source}_{entity}.txt").read_text("utf-8").strip()
+            if not re.fullmatch(r"[0-9]+", text):
+                raise ValueError("Hop source count is invalid")
+            expected[f"{source}:{entity}"] = int(text)
+    if published_counts(config) != expected:
+        raise ValueError("Hop source counts and Kafka publication counts differ")
     run.etl_verified_at = datetime.now(UTC)
     run.stage = "spark"
     save_run(run)
-
-    return published
+    return expected
 
 
 def execute_spark(run: IntegrationRun, env: dict[str, str], folder: Path) -> dict:

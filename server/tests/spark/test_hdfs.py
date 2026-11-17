@@ -26,6 +26,9 @@ def hdfs_state(spark: Any) -> Iterator[HdfsState]:
 
 
 def assert_demo_snapshot(spark: Any, state: HdfsState, sources: dict, manifest: dict) -> None:
+    from datetime import date, datetime
+    from decimal import Decimal
+
     from abassurance.systems.spark_pipeline.schemas import entity_schema
 
     expected, rejected = clean_datasets(sources, MAPPERS)
@@ -38,7 +41,19 @@ def assert_demo_snapshot(spark: Any, state: HdfsState, sources: dict, manifest: 
 
     for entity in MAPPERS:
         frame = read_snapshot(spark, state.root, entity, manifest=manifest)
-        rows = [row.asDict(recursive=True) for row in frame.drop("_kafka").collect()]
+        rows = [
+            {
+                key: value.isoformat(timespec="seconds")
+                if isinstance(value, datetime)
+                else value.isoformat()
+                if isinstance(value, date)
+                else str(value)
+                if isinstance(value, Decimal)
+                else value
+                for key, value in row.asDict(recursive=True).items()
+            }
+            for row in frame.drop("_kafka").collect()
+        ]
         key = ID_FIELDS[entity]
 
         assert len(rows) == len({row[key] for row in rows}) == 4

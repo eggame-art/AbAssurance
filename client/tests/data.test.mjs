@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+﻿import assert from "node:assert/strict";
 import { after, afterEach, before, mock, test } from "node:test";
 import { createServer } from "vite";
 
@@ -56,7 +56,7 @@ test("malformed responses and a response from another source are rejected", asyn
     { source: "oracle", data_kind: "demo", clients: [{ ...client, name: { invalid: true } }] },
   ]) {
     mock.method(globalThis, "fetch", async () => Response.json(response));
-    await assert.rejects(dataController.getClients("oracle"), /invalide/);
+    await assert.rejects(dataController.getClients("oracle"), /invalid/i);
     mock.restoreAll();
   }
 });
@@ -100,7 +100,7 @@ test("contracts from another source or with the wrong premium unit are rejected"
     { source: "oracle", data_kind: "demo", clients: [client] },
   ]) {
     mock.method(globalThis, "fetch", async () => Response.json(response));
-    await assert.rejects(dataController.getContracts("oracle"), /invalide/);
+    await assert.rejects(dataController.getContracts("oracle"), /invalid/i);
     mock.restoreAll();
   }
 });
@@ -148,7 +148,7 @@ test("claims from another source or with invalid fields are rejected", async () 
     { source: "oracle", data_kind: "demo", contracts: [contract] },
   ]) {
     mock.method(globalThis, "fetch", async () => Response.json(response));
-    await assert.rejects(dataController.getClaims("oracle"), /invalide/);
+    await assert.rejects(dataController.getClaims("oracle"), /invalid/i);
     mock.restoreAll();
   }
 });
@@ -187,7 +187,7 @@ test("invalid payment source or numeric amount is rejected", async () => {
     { source: "oracle", data_kind: "demo", payments: [{ ...payment, amount: 100 }] },
   ]) {
     mock.method(globalThis, "fetch", async () => Response.json(response));
-    await assert.rejects(dataController.getPayments("oracle"), /invalide/);
+    await assert.rejects(dataController.getPayments("oracle"), /invalid/i);
     mock.restoreAll();
   }
 });
@@ -210,7 +210,7 @@ test("wrong entity, integration, page or malformed archived data is rejected", a
     { records: [{ data: {}, original: { AP_USER_ID: { id: 100 } } }] },
   ]) {
     mock.method(globalThis, "fetch", async () => Response.json({ ...consolidated, ...change }));
-    await assert.rejects(dataController.getConsolidated("clients", 25, 25, consolidated.integration_id), /invalide/);
+    await assert.rejects(dataController.getConsolidated("clients", 25, 25, consolidated.integration_id), /invalid/i);
     mock.restoreAll();
   }
 });
@@ -218,4 +218,12 @@ test("wrong entity, integration, page or malformed archived data is rejected", a
 test("a missing HDFS snapshot is exposed without fallback rows", async () => {
   mock.method(globalThis, "fetch", async () => Response.json({ detail: "No completed consolidated snapshot is available." }, { status: 404 }));
   await assert.rejects(dataController.getConsolidated("clients", 0, 25), /No completed consolidated snapshot/);
+});
+
+test('contract selection sends the customer filter and preserves pagination context', async () => {
+  const customer = '0ce23490-7b17-57a3-933d-829abb01a605';
+  const response = { ...consolidated, entity: 'contracts', records: [{ data: { contract_id: 'contract', customer_id: customer }, original: {} }] };
+  const fetch = mock.method(globalThis, 'fetch', async () => Response.json(response));
+  assert.deepEqual(await dataController.getConsolidated('contracts', 25, 25, response.integration_id, undefined, customer), response);
+  assert.equal(fetch.mock.calls[0].arguments[0], `/api/data/consolidated/contracts?offset=25&limit=25&integration_id=${response.integration_id}&customer_id=${customer}`);
 });

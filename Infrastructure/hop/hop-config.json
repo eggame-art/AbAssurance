@@ -1,0 +1,14 @@
+{
+  "projectsConfig": {
+    "enabled": true,
+    "projectMandatory": true,
+    "defaultProject": "abassurance",
+    "projectConfigurations": [
+      {
+        "projectName": "abassurance",
+        "projectHome": "/opt/hop/project",
+        "configFilename": "project-config.json"
+      }
+    ]
+  }
+}
