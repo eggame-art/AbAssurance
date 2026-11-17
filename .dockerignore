@@ -15,6 +15,12 @@ Infrastructure/database
 **/node_modules
 **/.npm-cache
 client/dist
+logs
+*.log
+hs_err_pid*
+.github
+.codex
+.agents
 
 auth-demo-credentials.txt
 *.sqlite
