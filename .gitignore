@@ -36,3 +36,7 @@ node_modules/
 .npm-cache/
 client/dist/
 .tools/
+
+auth-demo-credentials.txt
+*.sqlite
+*.sqlite-*
