@@ -35,7 +35,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - 'SQLCMDPASSWORD="$$MSSQL_SA_PASSWORD" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -l 5 -Q "SELECT 1" > /dev/null'
+        - 'SQLCMDPASSWORD="$$MSSQL_SA_PASSWORD" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -d master -l 5 -t 5 -Q "IF DB_ID(N''AssurePlus'') IS NOT NULL EXEC(N''USE [AssurePlus]; SELECT 1;''); ELSE SELECT 1;" > /dev/null'
       interval: 10s
       timeout: 10s
       retries: 30
