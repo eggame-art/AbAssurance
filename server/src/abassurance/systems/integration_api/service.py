@@ -17,6 +17,62 @@ from abassurance.systems.integration_api.schemas import IntegrationCounts, Integ
 STAGE_TIMEOUT = 600
 START_LOCK = Lock()
 
+RUNTIME_VARIABLES = {
+    "PATH",
+    "HOME",
+    "LANG",
+    "LC_ALL",
+    "TZ",
+    "TMPDIR",
+    "TMP",
+    "TEMP",
+    "SystemRoot",
+    "SYSTEMROOT",
+    "WINDIR",
+    "COMSPEC",
+    "PATHEXT",
+    "USERPROFILE",
+    "APPDATA",
+    "LOCALAPPDATA",
+    "JAVA_HOME",
+    "PYTHONPATH",
+    "PYSPARK_PYTHON",
+    "PYSPARK_DRIVER_PYTHON",
+    "SPARK_LOCAL_IP",
+    "SPARK_LOCAL_HOSTNAME",
+    "SPARK_SUBMIT_OPTS",
+    "HADOOP_HOME",
+    "HADOOP_CONF_DIR",
+    "HADOOP_USER_NAME",
+    "KAFKA_BOOTSTRAP_SERVERS",
+    "KAFKA_GROUP_ID",
+    "KAFKA_TIMEOUT",
+    "INTEGRATION_HDFS_ROOT",
+}
+ETL_VARIABLES = {
+    "HOP_HOME",
+    "HOP_PROJECT_DIR",
+    "HOP_CONFIG_FOLDER",
+    "HOP_JAVA_HOME",
+    "HOP_OPTIONS",
+    "HOP_COUNTS_DIR",
+    "ORACLE_HOST",
+    "ORACLE_PORT",
+    "ORACLE_SERVICE",
+    "ORACLE_USER",
+    "ORACLE_APP_PASSWORD",
+    "ORACLE_APP_PASSWORD_FILE",
+    "SQLSERVER_HOST",
+    "SQLSERVER_PORT",
+    "SQLSERVER_DATABASE",
+    "SQLSERVER_USER",
+    "SQLSERVER_PASSWORD",
+    "SQLSERVER_PASSWORD_FILE",
+    "SQLSERVER_REQUIRE_SERVICE_ACCOUNT",
+    "SQLSERVER_ENCRYPT",
+    "SQLSERVER_TRUST_CERTIFICATE",
+}
+
 STAGE_LABELS = {
     "pending": "Preparation",
     "etl": "Apache Hop into Kafka",
@@ -109,11 +165,12 @@ def run_command(command: list[str], env: dict[str, str], log_path: Path) -> None
 
 def load_environment(run_id: str) -> dict[str, str]:
     env = {
-        name: value for name, value in Environment.from_file(PROJECT_ROOT / ".env").values.items() if value is not None
+        name: value
+        for name, value in Environment.from_file(PROJECT_ROOT / ".env").values.items()
+        if value is not None and name in RUNTIME_VARIABLES | ETL_VARIABLES
     }
 
     env["KAFKA_TOPIC_PREFIX"] = f"web-integration-{run_id}"
-    env.pop("PIPELINE_ADMIN_TOKEN", None)
 
     return env
 
@@ -192,7 +249,10 @@ def execute_spark(run: IntegrationRun, env: dict[str, str], folder: Path) -> dic
 
     command = [sys.executable, "-m", "abassurance.systems.integration_api.worker", state, str(result)]
 
-    run_command(command, env, folder / "spark.log")
+    worker_env = {
+        name: value for name, value in env.items() if name in RUNTIME_VARIABLES or name == "KAFKA_TOPIC_PREFIX"
+    }
+    run_command(command, worker_env, folder / "spark.log")
 
     run.stage = "verification"
     save_run(run)

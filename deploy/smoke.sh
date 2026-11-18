@@ -39,6 +39,13 @@ assert b'<html' in urlopen('http://frontend/').read().lower()
 assert b'<html' in urlopen('http://frontend/pipeline').read().lower()
 assert b'<html' in urlopen('http://frontend/donnees').read().lower()
 base = 'http://frontend/api'
+try:
+    urlopen(Request(base + '/auth/login', data=b'x' * 65537,
+        headers={'Content-Type': 'application/json', 'X-Requested-With': 'AbAssurance'}))
+except HTTPError as exc:
+    assert exc.code == 413
+else:
+    raise AssertionError('Oversized body accepted through the web proxy')
 for path in ('/docs', '/openapi.json'):
     try:
         urlopen(base + path)

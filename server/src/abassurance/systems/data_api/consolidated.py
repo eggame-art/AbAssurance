@@ -11,6 +11,31 @@ from abassurance.systems.integration_api.schemas import IntegrationRun
 from abassurance.systems.integration_api.service import state_directory
 
 
+def validate_archived_identity(data: dict, envelope: dict, dataset: str) -> None:
+    """Reject archives for another record or parent before returning raw fields."""
+    from abassurance.systems.data_integration.mapping.claims import CLAIM_FIELDS
+    from abassurance.systems.data_integration.mapping.contracts import CONTRACT_FIELDS
+    from abassurance.systems.data_integration.mapping.identifiers import matches_identity
+    from abassurance.systems.data_integration.mapping.payments import PAYMENT_FIELDS
+    from abassurance.systems.data_integration.pipeline.validation import ID_FIELDS
+    from abassurance.systems.messaging.config import SOURCE_TABLES
+
+    if not isinstance(envelope, dict) or envelope.get("source_system") != data["source_system"]:
+        raise ValueError("Archived source does not match the consolidated record")
+    if envelope.get("entity") != dataset or not isinstance(envelope.get("data"), dict):
+        raise ValueError("Archived source does not match the consolidated record")
+    source = data["source_system"]
+    references = [(SOURCE_TABLES[source][dataset][1], ID_FIELDS[dataset], dataset)]
+    if dataset == "contracts":
+        references.append((CONTRACT_FIELDS[source]["customer_id"], "customer_id", "customers"))
+    elif dataset in ("claims", "payments"):
+        fields = CLAIM_FIELDS if dataset == "claims" else PAYMENT_FIELDS
+        references.append((fields[source]["contract"], "contract_id", "contracts"))
+    for raw_field, common_field, entity in references:
+        if not matches_identity(source, envelope["data"].get(raw_field), data[common_field], entity, allow_legacy=True):
+            raise ValueError("Archived source identity does not match the consolidated record")
+
+
 def committed_run(integration_id: str | None = None) -> IntegrationRun:
     paths = [state_directory() / f"{integration_id}.json"] if integration_id else state_directory().glob("*.json")
     runs = []
@@ -130,8 +155,7 @@ def get_consolidated(
 
         envelope = json.loads(row.original, parse_float=Decimal)
 
-        if envelope["source_system"] != data["source_system"] or envelope["entity"] != dataset:
-            raise ValueError("Archived source does not match the consolidated record")
+        validate_archived_identity(data, envelope, dataset)
 
         original = {
             key: str(value) if isinstance(value, Decimal) or (type(value) is int and abs(value) > 2**53 - 1) else value

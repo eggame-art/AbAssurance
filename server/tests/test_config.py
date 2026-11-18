@@ -2,13 +2,18 @@ import os
 from pathlib import Path
 
 import pytest
-from abassurance.systems.data_integration.extraction.config import ConfigurationError, load_settings
+from abassurance.shared.environment import Environment
+from abassurance.systems.data_integration.extraction.config import (
+    ConfigurationError,
+    load_settings,
+    load_sqlserver_config,
+)
 
 
 @pytest.fixture
 def env_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     for name in os.environ:
-        if (name.startswith(("ORACLE_", "SQLSERVER_", "MSSQL_", "DB_", "PIPELINE_"))):
+        if name.startswith(("ORACLE_", "SQLSERVER_", "MSSQL_", "DB_", "PIPELINE_")):
             monkeypatch.delenv(name)
     path = tmp_path / ".env"
     path.write_text("ORACLE_APP_PASSWORD=oracle-test-secret\nMSSQL_SA_PASSWORD=sql-test-secret\n", encoding="utf-8")
@@ -59,3 +64,20 @@ def test_dsn_and_tls_configuration(env_file: Path, monkeypatch: pytest.MonkeyPat
     assert settings.oracle.dsn == "database.example.test:1522/CUSTOM"
     assert settings.sqlserver.encrypt is True
     assert settings.sqlserver.trust_server_certificate is True
+
+
+def test_production_sql_account_cannot_use_sa_or_admin_password_fallback():
+    base = {"SQLSERVER_REQUIRE_SERVICE_ACCOUNT": "true", "MSSQL_SA_PASSWORD": "admin-only-secret"}
+
+    with pytest.raises(ConfigurationError, match="dedicated service account"):
+        load_sqlserver_config(Environment({**base, "SQLSERVER_USER": " SA "}))
+
+    with pytest.raises(ConfigurationError, match="SQLSERVER_PASSWORD"):
+        load_sqlserver_config(Environment({**base, "SQLSERVER_USER": "abassurance_reader"}))
+
+    config = load_sqlserver_config(
+        Environment({**base, "SQLSERVER_USER": "abassurance_reader", "SQLSERVER_PASSWORD": "service-only-secret"})
+    )
+
+    assert config.user == "abassurance_reader"
+    assert config.password == "service-only-secret"

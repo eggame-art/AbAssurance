@@ -7,7 +7,8 @@ from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from abassurance.shared.spark_runtime import SparkRuntime
+from abassurance.shared.request_limits import RequestBodyLimit
+from abassurance.shared.spark_runtime import SparkBusy, SparkRuntime
 from abassurance.systems.auth.routes import router as personal_router
 from abassurance.systems.auth.service import protect
 from abassurance.systems.auth.service import router as auth_router
@@ -43,6 +44,7 @@ def create_app() -> FastAPI:
         root_path=os.environ.get("API_ROOT_PATH", "/api"),
     )
     app.middleware("http")(protect)
+    app.add_middleware(RequestBodyLimit)
     app.include_router(auth_router)
     app.include_router(personal_router)
     app.state.spark_runtime = SparkRuntime()
@@ -59,6 +61,10 @@ def create_app() -> FastAPI:
 
         try:
             return await request.app.state.spark_runtime.run(load)
+        except SparkBusy as exc:
+            raise HTTPException(
+                429, "Prediction service is busy. Try again later.", headers={"Retry-After": "3"}
+            ) from exc
         except TimeoutError as exc:
             raise HTTPException(status_code=504, detail="Model loading timed out.") from exc
         except Exception as exc:

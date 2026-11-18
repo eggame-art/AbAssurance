@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from abassurance.shared.environment import Environment
+from abassurance.shared.spark_runtime import SparkBusy
 from abassurance.systems.data_api.consolidated import committed_run
 from abassurance.systems.data_integration.extraction.config import PROJECT_ROOT
 from abassurance.systems.data_preparation.features import PreparedDataset
@@ -137,6 +138,8 @@ async def contract_prediction(
         return await request.app.state.spark_runtime.run(
             lambda spark: predict_contract(spark, body, service), timeout=90
         )
+    except SparkBusy as exc:
+        raise HTTPException(429, "Prediction service is busy. Try again later.", headers={"Retry-After": "3"}) from exc
     except HTTPException:
         raise
     except FileNotFoundError as exc:

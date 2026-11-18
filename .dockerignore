@@ -9,6 +9,8 @@ __pycache__
 .ruff_cache
 .coverage
 htmlcov
+coverage
+client/coverage
 data
 Infrastructure/database
 .tools

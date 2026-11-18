@@ -6,6 +6,27 @@ import tempfile
 from pathlib import Path
 
 
+def secret(name, fallback=""):
+    path = os.environ.get(name + "_FILE")
+    if path:
+        if os.environ.get(name):
+            raise ValueError(f"Set either {name} or {name}_FILE, not both")
+        try:
+            with Path(path).open("rb") as source:
+                data = source.read(4097)
+            if len(data) > 4096:
+                raise ValueError
+            value = data.decode("utf-8").rstrip("\r\n")
+        except (OSError, UnicodeError, ValueError):
+            raise ValueError(f"Cannot read secret: {name}") from None
+    else:
+        value = os.environ.get(name) or os.environ.get(fallback, "")
+    if not value or not value.strip():
+        raise ValueError(f"Missing {name}")
+
+    return value
+
+
 def configuration():
     defaults = {
         "ORACLE_HOST": "oracle",
@@ -20,12 +41,17 @@ def configuration():
         "KAFKA_TOPIC_PREFIX": "insurance",
         "HOP_COUNTS_DIR": "/tmp/hop-counts",
     }
+
     values = {key: os.environ.get(key) or default for key, default in defaults.items()}
+    dedicated = os.environ.get("SQLSERVER_REQUIRE_SERVICE_ACCOUNT", "false").lower() in ("true", "yes", "1")
+    if dedicated and values["SQLSERVER_USER"].strip().lower() == "sa":
+        raise ValueError("SQL Server requires a dedicated service account")
+
     for key, fallback in [("ORACLE_APP_PASSWORD", ""), ("SQLSERVER_PASSWORD", "MSSQL_SA_PASSWORD")]:
-        value = os.environ.get(key) or os.environ.get(fallback, "")
-        if not value:
-            raise ValueError(f"Missing {key}")
-        values[key] = value
+        if dedicated and key == "SQLSERVER_PASSWORD":
+            fallback = ""
+        values[key] = secret(key, fallback)
+
     for name, default in [("SQLSERVER_ENCRYPT", "yes"), ("SQLSERVER_TRUST_CERTIFICATE", "no")]:
         value = os.environ.get(name, default).lower()
         if value not in ("yes", "no", "true", "false", "1", "0"):

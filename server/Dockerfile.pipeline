@@ -29,4 +29,4 @@ ENV HOP_PROJECT_DIR=/opt/hop/project
 ENV HOP_CONFIG_FOLDER=/opt/hop/config
 ENV HOP_JAVA_HOME=/opt/hop-java
 ENV HOP_OPTIONS="-Xmx512m -Djava.awt.headless=true -Duser.timezone=UTC -Dfile.encoding=UTF-8"
-CMD ["python", "-m", "uvicorn", "abassurance.systems.monitoring.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+CMD ["python", "-m", "uvicorn", "abassurance.systems.monitoring.app:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000", "--workers", "1", "--limit-concurrency", "64", "--backlog", "128", "--timeout-keep-alive", "5"]
