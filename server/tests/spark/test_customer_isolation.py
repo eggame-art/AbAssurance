@@ -1,7 +1,9 @@
 import json
 from copy import deepcopy
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from types import SimpleNamespace
+from typing import cast
+from uuid import UUID
 
 import pytest
 from abassurance.shared.errors import ConfigurationError
@@ -85,7 +87,7 @@ def dataset(spark, demo_sources, envelopes, monkeypatch):
 
     reader = SimpleNamespace(schema=lambda _: SimpleNamespace(parquet=lambda _: store["raw"]))
 
-    return SimpleNamespace(spark=SimpleNamespace(read=reader), raw_rows=raw_rows, store=store)
+    return SimpleNamespace(spark=SimpleNamespace(read=reader), raw_rows=raw_rows, store=store, frames=frames)
 
 
 @pytest.mark.parametrize("entity", ENTITIES)
@@ -240,3 +242,67 @@ def test_large_archive_identifiers_and_decimal_values_remain_exact(spark, datase
 
     assert response.records[0].original["ARCHIVED_LARGE_ID"] == str(2**60 + 1)
     assert response.records[0].original["ARCHIVED_AMOUNT"] == "12.25"
+
+
+@pytest.mark.parametrize("owner", OWNERS)
+def test_prediction_only_calculates_features_for_the_owners_contract(
+    spark, dataset, monkeypatch, owner: tuple[str, str]
+):
+    from unittest.mock import Mock
+
+    from abassurance.systems.prediction_api import contracts
+    from abassurance.systems.prediction_api.service import PredictionService
+    from fastapi import HTTPException
+
+    monkeypatch.setattr(contracts, "committed_run", lambda _: SimpleNamespace(id="a" * 32, snapshot="b" * 32))
+    monkeypatch.setattr(
+        contracts, "HdfsState", lambda *_: SimpleNamespace(read_json=lambda _: dataset.store["manifest"])
+    )
+    monkeypatch.setattr(contracts, "read_snapshot", lambda _spark, _root, entity, **_: dataset.frames[entity])
+    prediction = Mock(
+        return_value={
+            "cancellation_probability": 0.2,
+            "predicted_class": 0,
+            "model_id": "c" * 32,
+            "status": "experimental",
+            "business_validated": False,
+        }
+    )
+    service = cast(
+        PredictionService,
+        Mock(spec=PredictionService, info=SimpleNamespace(feature_columns=["claim_count"]), predict=prediction),
+    )
+    source, identifier = owner
+    customer_id = make_id(source, identifier, "customers")
+
+    def prepare(frames, observation):
+        for entity in ("customers", "contracts", "claims", "payments"):
+            rows = frames[entity].collect()
+            assert len(rows) == 1
+            assert rows[0].source_system == owner[0]
+            assert getattr(rows[0], "customer_id", customer_id) == customer_id
+            if entity != "customers":
+                assert rows[0].contract_id == make_id(owner[0], f"C-{owner[1]}", "contracts")
+        return SimpleNamespace(
+            dataset=SimpleNamespace(first=lambda: SimpleNamespace(asDict=lambda: {"claim_count": 1})),
+            close=lambda: None,
+        )
+
+    prepared = Mock(side_effect=prepare)
+    monkeypatch.setattr(contracts, "PreparedDataset", prepared)
+    for other in OWNERS:
+        body = contracts.ContractInput(
+            customer_id=UUID(customer_id),
+            contract_id=UUID(make_id(other[0], f"C-{other[1]}", "contracts")),
+            integration_id="a" * 32,
+            observation_date=date(2025, 7, 1),
+        )
+        if other == owner:
+            result = contracts.predict_contract(spark, body, service, owner=owner)
+            assert result.customer_id == body.customer_id
+        else:
+            with pytest.raises(HTTPException) as error:
+                contracts.predict_contract(spark, body, service, owner=owner)
+            assert error.value.status_code == 404
+    assert prepared.call_count == 1
+    assert prediction.call_count == 1

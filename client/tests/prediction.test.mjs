@@ -77,3 +77,28 @@ test('wrong client, snapshot context or invalid calculated values are rejected',
     mock.restoreAll();
   }
 });
+
+test('personal prediction sends only the contract, integration and observation date with the session', async () => {
+  const fetch = mock.method(globalThis, 'fetch', async () => Response.json(contractResult));
+  const { customer_id, ...body } = contractInput;
+  assert.deepEqual(await predictionController.predictOwnContract(body), contractResult);
+  const [path, options] = fetch.mock.calls[0].arguments;
+  assert.equal(path, '/api/me/predict/contract');
+  assert.equal(options.method, 'POST');
+  assert.equal(options.credentials, 'include');
+  assert.deepEqual(JSON.parse(options.body), body);
+  assert.equal('customer_id' in JSON.parse(options.body), false);
+});
+
+test('personal prediction rejects a mismatched result and reports denied contracts', async () => {
+  const { customer_id, ...body } = contractInput;
+  for (const change of [{ contract_id: 'other' }, { integration_id: 'c'.repeat(32) },
+    { observation_date: '2000-01-01' }, { snapshot: 'invalid' }, { features: {} },
+    { prediction: { ...prediction, cancellation_probability: 1.1 } }]) {
+    mock.method(globalThis, 'fetch', async () => Response.json({ ...contractResult, ...change }));
+    await assert.rejects(predictionController.predictOwnContract(body), /invalid/i);
+    mock.restoreAll();
+  }
+  mock.method(globalThis, 'fetch', async () => Response.json({ detail: 'Contract not found for this customer.' }, { status: 404 }));
+  await assert.rejects(predictionController.predictOwnContract(body), /Contract not found/);
+});

@@ -40,7 +40,16 @@ class ContractResult(BaseModel):
     prediction: PredictionResponse
 
 
-def predict_contract(spark, body: ContractInput, service: PredictionService) -> ContractResult:
+class PersonalContractInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    contract_id: UUID
+    integration_id: str = Field(pattern=r"^[0-9a-f]{32}$")
+    observation_date: date
+
+
+def predict_contract(
+    spark, body: ContractInput, service: PredictionService, *, owner: tuple[str, str] | None = None
+) -> ContractResult:
     from pyspark.sql import functions as F
 
     run = committed_run(body.integration_id)
@@ -68,6 +77,12 @@ def predict_contract(spark, body: ContractInput, service: PredictionService) -> 
     contracts = frames["contracts"].filter(
         (F.col("contract_id") == contract_id) & (F.col("customer_id") == customer_id)
     )
+    if owner is not None:
+        from abassurance.systems.data_integration.mapping.identifiers import make_id
+
+        if customer_id != make_id(owner[0], owner[1], "customers"):
+            raise HTTPException(404, "Contract not found for this customer.")
+        contracts = contracts.filter(F.col("source_system") == owner[0])
 
     selected = contracts.limit(2).collect()
 
@@ -131,12 +146,38 @@ def predict_contract(spark, body: ContractInput, service: PredictionService) -> 
 async def contract_prediction(
     body: ContractInput, request: Request, service: Annotated[PredictionService, Depends(get_service)]
 ) -> ContractResult:
+    return await execute_prediction(body, request, service)
+
+
+@router.post("/me/predict/contract", response_model=ContractResult, summary="Prédire sur un de ses contrats")
+async def personal_contract_prediction(
+    body: PersonalContractInput, request: Request, service: Annotated[PredictionService, Depends(get_service)]
+) -> ContractResult:
+    from abassurance.systems.data_integration.mapping.identifiers import make_id
+
+    user = request.state.user
+    if not user.get("source") or not user.get("source_id"):
+        raise HTTPException(403, "No customer is associated with this account.")
+    selected = ContractInput(
+        customer_id=UUID(make_id(user["source"], user["source_id"], "customers")), **body.model_dump()
+    )
+    return await execute_prediction(selected, request, service, owner=(user["source"], user["source_id"]))
+
+
+async def execute_prediction(
+    body: ContractInput, request: Request, service: PredictionService, *, owner: tuple[str, str] | None = None
+) -> ContractResult:
     if body.observation_date > datetime.now(UTC).date():
         raise HTTPException(status_code=422, detail="Observation date cannot be in the future.")
 
     try:
         return await request.app.state.spark_runtime.run(
-            lambda spark: predict_contract(spark, body, service), timeout=90
+            lambda spark: (
+                predict_contract(spark, body, service, owner=owner)
+                if owner is not None
+                else predict_contract(spark, body, service)
+            ),
+            timeout=90,
         )
     except SparkBusy as exc:
         raise HTTPException(429, "Prediction service is busy. Try again later.", headers={"Retry-After": "3"}) from exc

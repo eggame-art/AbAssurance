@@ -63,6 +63,20 @@ function isPredictionResponse(data: PredictionResponse): boolean {
 }
 
 export const predictionService = {
+  async predictOwnContract(body: Omit<ContractPredictionRequest, "customer_id">): Promise<ContractPredictionResponse> {
+    const data = await httpClient.post<ContractPredictionResponse>("/me/predict/contract", undefined, body, 150_000);
+    if (!data || data.contract_id !== body.contract_id || data.integration_id !== body.integration_id
+      || data.observation_date !== body.observation_date
+      || !data.features || typeof data.features !== "object" || Array.isArray(data.features)
+      || !features.every((field) => field in data.features)
+      || !Object.values(data.features).every((value) => value === null
+        || (typeof value === "number" && Number.isFinite(value) && value >= 0))
+      || typeof data.snapshot !== "string" || !MODEL_ID_PATTERN.test(data.snapshot)
+      || typeof data.customer_id !== "string" || !isPredictionResponse(data.prediction)) {
+      throw new Error("Invalid personal prediction response.");
+    }
+    return data;
+  },
   async predictContract(body: ContractPredictionRequest): Promise<ContractPredictionResponse> {
     const data = await httpClient.post<ContractPredictionResponse>("/predict/contract", undefined, body, 150_000);
     if (!data || data.customer_id !== body.customer_id || data.contract_id !== body.contract_id

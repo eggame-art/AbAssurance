@@ -92,6 +92,61 @@ def test_admin_without_customer_cannot_use_personal_data(client):
     assert client.get("/me/data/clients").status_code == 403
 
 
+def test_personal_prediction_uses_session_identity_and_requires_login(client, monkeypatch):
+    from abassurance.systems.data_integration.mapping.identifiers import make_id
+    from abassurance.systems.prediction_api import contracts
+    from abassurance.systems.prediction_api.routes import get_service
+
+    body = {
+        "contract_id": make_id("abassurance", "C-100", "contracts"),
+        "integration_id": "a" * 32,
+        "observation_date": "2025-01-01",
+    }
+    expected = {**body, "customer_id": make_id("abassurance", "100", "customers")}
+    result = contracts.ContractResult.model_validate(
+        {
+            **expected,
+            "snapshot": "b" * 32,
+            "features": {"claim_count": 1},
+            "prediction": {
+                "cancellation_probability": 0.2,
+                "predicted_class": 0,
+                "model_id": "c" * 32,
+                "status": "experimental",
+                "business_validated": False,
+            },
+        }
+    )
+    calculate = Mock(return_value=result)
+    monkeypatch.setattr(contracts, "predict_contract", calculate)
+    predictor = object()
+    client.app.dependency_overrides[get_service] = lambda: predictor
+
+    async def run(action, **kwargs):
+        return action("spark")
+
+    client.app.state.spark_runtime = SimpleNamespace(run=run, close=Mock())
+    assert client.post("/me/predict/contract", json=body).status_code == 401
+    login(client)
+    response = client.post("/me/predict/contract?source_id=101&role=admin", json=body)
+    assert response.status_code == 200
+    assert response.json()["customer_id"] == expected["customer_id"]
+    calculate.assert_called_once_with(
+        "spark", contracts.ContractInput.model_validate(expected), predictor, owner=("abassurance", "100")
+    )
+    calculate.reset_mock()
+    for forged in (
+        {"customer_id": make_id("abassurance", "101", "customers")},
+        {"claim_count": 0},
+        {"source": "assureplus"},
+    ):
+        assert client.post("/me/predict/contract", json=body | forged).status_code == 422
+    calculate.assert_not_called()
+    client.post("/auth/logout")
+    login(client, "admin")
+    assert client.post("/me/predict/contract", json=body).status_code == 403
+
+
 @pytest.mark.parametrize("error,status", [(FileNotFoundError, 404), (TimeoutError, 504), (RuntimeError, 503)])
 def test_personal_data_failures_are_reported_without_private_diagnostics(client, error, status):
     async def run(action):

@@ -11,6 +11,7 @@ function config() {
     oracle: ["data"],
     sqlserver: ["data"],
     "sqlserver-init": ["data"],
+    "demo-seed": ["data"],
     kafka: ["data"],
     namenode: ["data"],
     datanode: ["data"],

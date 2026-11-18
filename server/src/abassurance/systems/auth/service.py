@@ -140,7 +140,9 @@ async def protect(request: Request, call_next):
 
         request.state.user = user
 
-        if user["role"] != "admin" and not (path.startswith("/me/data/") or path == "/auth/logout"):
+        if user["role"] != "admin" and not (
+            path.startswith("/me/data/") or path in ("/auth/logout", "/me/predict/contract")
+        ):
             return JSONResponse(status_code=403, content={"detail": "Administrator access required."})
         if path != "/auth/logout":
             retry = limits.retry_after(f"account:{user['username']}", 120)
