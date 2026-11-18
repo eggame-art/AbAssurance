@@ -11,7 +11,7 @@ from abassurance.shared.errors import ConfigurationError
 from abassurance.shared.storage import state_lock, write_json_atomic
 from abassurance.systems.messaging.config import KafkaConfig, load_kafka_config
 
-if (TYPE_CHECKING):
+if TYPE_CHECKING:
     from pyspark.sql import DataFrame, SparkSession
 
 LOGGER = logging.getLogger(__name__)
@@ -125,7 +125,7 @@ def materialize(spark: "SparkSession", state: Path, prefix: str) -> dict[str, An
 def run_available(
     spark: "SparkSession", config: KafkaConfig, state: Path | str, *, max_offsets: int = 10000
 ) -> dict[str, Any]:
-    if (isinstance(state, str) and state.startswith("hdfs:")):
+    if isinstance(state, str) and state.startswith("hdfs:"):
         from abassurance.systems.spark_pipeline.hdfs import HdfsState, materialize_hdfs
 
         storage = HdfsState(spark, state)
@@ -137,7 +137,7 @@ def run_available(
 
             return materialize_hdfs(spark, storage, config.topic_prefix)
 
-    if (isinstance(state, str) and "://" in state):
+    if isinstance(state, str) and "://" in state:
         raise ConfigurationError("Unsupported state URI; use a local directory or hdfs:// URI")
 
     state = Path(state).resolve()

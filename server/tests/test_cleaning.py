@@ -39,11 +39,7 @@ def test_duplicates_keep_first_valid_record_and_report_every_extra_row(sources, 
 
 @pytest.mark.parametrize(
     "entity, field, value",
-    [
-        ("customers", "AB_CLIENT_ID", None),
-        ("customers", "AB_CLIENT_ID", "  "),
-        ("contracts", "AB_CLIENT_ID", None),
-    ],
+    [("customers", "AB_CLIENT_ID", None), ("customers", "AB_CLIENT_ID", "  "), ("contracts", "AB_CLIENT_ID", None)],
 )
 def test_missing_identifiers_are_rejected(sources, entity, field, value):
     sources["abassurance"][entity][0][field] = value
@@ -79,10 +75,7 @@ def test_invalid_values_are_rejected(sources, entity, field, value, reason):
 
 def test_missing_field_is_reported_without_stopping_other_records(sources):
     del sources["abassurance"]["payments"][0]["AB_PAYMENT_ID"]
-    sources["abassurance"]["payments"].append({
-        "AB_PAYMENT_ID": 2,
-        "AB_POLICY_NUMBER": "CONT-1",
-    })
+    sources["abassurance"]["payments"].append({"AB_PAYMENT_ID": 2, "AB_POLICY_NUMBER": "CONT-1"})
 
     data, rejected = clean_datasets(sources, MAPPERS)
 
@@ -103,10 +96,7 @@ def test_optional_values_stay_optional_and_sources_are_not_modified(sources):
 
 
 def test_reversed_contract_dates_reject_contract_and_children(sources):
-    sources["abassurance"]["contracts"][0].update(
-        AB_DATE_DEBUT="2025-12-31",
-        AB_DATE_FIN="2025-01-01",
-    )
+    sources["abassurance"]["contracts"][0].update(AB_DATE_DEBUT="2025-12-31", AB_DATE_FIN="2025-01-01")
 
     data, rejected = clean_datasets(sources, MAPPERS)
 
@@ -128,10 +118,7 @@ def test_rejected_database_values_keep_their_type_and_representation(sources):
     _, rejected = clean_datasets(sources, MAPPERS)
 
     for field in ("AB_MONTANT", "AB_DATE_PAIEMENT", "EXTRA_ID", "EXTRA_FLOAT"):
-        assert rejected[0]["record"][field] == {
-            "type": type(record[field]).__name__,
-            "value": repr(record[field]),
-        }
+        assert rejected[0]["record"][field] == {"type": type(record[field]).__name__, "value": repr(record[field])}
 
 
 def test_rejects_inconsistent_source_identifier(sources):
@@ -152,9 +139,7 @@ def test_rejects_cross_source_contract_reference(sources):
     def contract_mapper(record, source):
         mapped = MAPPERS["contracts"](record, source)
         mapped.update(
-            contract_id="9cb55612-5a13-5fce-a4e9-d05a8975bb34",
-            source_system="assureplus",
-            source_reference="OTHER",
+            contract_id="9cb55612-5a13-5fce-a4e9-d05a8975bb34", source_system="assureplus", source_reference="OTHER"
         )
         mapped["customer_id"] = "3fff094d-64af-55c0-abc9-2e86a559959e"
 
@@ -163,17 +148,13 @@ def test_rejects_cross_source_contract_reference(sources):
     def payment_mapper(record, source):
         mapped = MAPPERS["payments"](record, source)
         mapped["contract_id"] = "9cb55612-5a13-5fce-a4e9-d05a8975bb34"
-        
+
         return mapped
 
     sources["assureplus"] = {entity: [] for entity in MAPPERS}
     sources["assureplus"]["customers"] = [{"AP_USER_ID": 100}]
 
-    mappers = {
-        **MAPPERS,
-        "contracts": contract_mapper,
-        "payments": payment_mapper,
-    }
+    mappers = {**MAPPERS, "contracts": contract_mapper, "payments": payment_mapper}
 
     data, rejected = clean_datasets(sources, mappers)
 

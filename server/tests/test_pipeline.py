@@ -37,14 +37,17 @@ def records(monkeypatch):
     }
     monkeypatch.setattr(run, "fetch_oracle", lambda entity, config: data["abassurance"][entity])
     monkeypatch.setattr(run, "fetch_sqlserver", lambda entity, config: data["assureplus"][entity])
-    
+
     return data
 
 
 def test_complete_pipeline_keeps_origins_and_exact_amounts(records, settings: Settings):
     data = run.run_pipeline(settings=settings)
 
-    assert {row["customer_id"] for row in data["customers"]} == {"0ce23490-7b17-57a3-933d-829abb01a605", "3fff094d-64af-55c0-abc9-2e86a559959e"}
+    assert {row["customer_id"] for row in data["customers"]} == {
+        "0ce23490-7b17-57a3-933d-829abb01a605",
+        "3fff094d-64af-55c0-abc9-2e86a559959e",
+    }
     assert {row["source_id"] for row in data["customers"]} == {"100"}
     assert {row["annual_premium"] for row in data["contracts"]} == {"1199.88"}
     assert data["payments"][1]["source_id"] == "123e4567-e89b-12d3-a456-426614174000"
@@ -65,12 +68,12 @@ def test_invalid_records_are_isolated_before_export(records, settings, failure):
     entity = "payments"
     source = "assureplus"
 
-    if (failure == "mapping"):
+    if failure == "mapping":
         records["assureplus"]["payments"][0]["AP_AMOUNT_PAID"] = -1
-    elif (failure == "duplicate"):
+    elif failure == "duplicate":
         entity, source = "claims", "abassurance"
         records["abassurance"]["claims"].append(deepcopy(records["abassurance"]["claims"][0]))
-    elif (failure == "orphan"):
+    elif failure == "orphan":
         source = "abassurance"
         records["abassurance"]["payments"][0]["AB_POLICY_NUMBER"] = "UNKNOWN"
     else:
@@ -103,7 +106,7 @@ def test_extraction_failure_preserves_all_previous_exports(records, settings, mo
     before = {path.name: path.read_bytes() for path in settings.output_dir.iterdir()}
 
     def fail(entity, config):
-        if (entity == "payments"):
+        if entity == "payments":
             raise ExtractionError("SQL Server unavailable")
         return records["assureplus"][entity]
 

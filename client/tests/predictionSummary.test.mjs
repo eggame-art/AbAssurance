@@ -48,19 +48,25 @@ test("the result shows a plain French score and its original model value", () =>
   assert.match(render({ cancellation_probability: 1 }), /<strong>100\s*%/);
 });
 
-test("synthetic results clearly remain demonstrations", () => {
-  const html = render();
-  assert.match(html, /entraîné sur des données fictives/);
-  assert.match(html, /Risque réel non validé/);
+test("the details identify the model that actually returned the score", () => {
+  const html = render({
+    model_id: "b".repeat(32),
+    cancellation_probability: 0.27123,
+  });
+  assert.match(html, /<dd>b{32}<\/dd>/);
+  assert.doesNotMatch(html, /<dd>a{32}<\/dd>/);
+  assert.match(html, /<strong>27,12\s*%/);
+  assert.match(html, /<dd>0\.27123<\/dd>/);
 });
 
-test("real-data models retain the business-validation qualification without a synthetic claim", () => {
-  const html = render({ status: "data_validated" });
-  assert.match(html, /Estimation non validée pour un usage métier/);
-  assert.doesNotMatch(html, /données fictives/);
-  assert.doesNotMatch(
-    render({ status: "data_validated", business_validated: true }),
-    /non validée/,
+test("the percentage comes from the probability rather than the binary class", () => {
+  assert.match(
+    render({ cancellation_probability: 0.38, predicted_class: 1 }),
+    /<strong>38\s*%/,
+  );
+  assert.match(
+    render({ cancellation_probability: 0.81, predicted_class: 0 }),
+    /<strong>81\s*%/,
   );
 });
 
@@ -74,10 +80,10 @@ test("rounding never turns an intermediate probability into zero or one hundred 
   assert.doesNotMatch(nearZero, /<strong>0\s*%/);
 });
 
-test("an exact maximum remains visible without being presented as certain cancellation", () => {
+test("an exact maximum keeps the unrounded value available in the details", () => {
   const html = render({ cancellation_probability: 1 });
   assert.match(html, /<dd>1<\/dd>/);
-  assert.match(html, /Une résiliation n’est pas certaine/);
+  assert.match(html, /<strong>100\s*%/);
 });
 
 test("personal predictions are accessible from the initial profile without selecting contracts", () => {

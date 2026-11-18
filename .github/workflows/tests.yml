@@ -1,4 +1,4 @@
-name: Tests and coverage
+name: Quality, tests and coverage
 on:
   push:
     branches: [develop, "feature/**"]
@@ -21,6 +21,10 @@ jobs:
           distribution: temurin
           java-version: "17"
       - run: python -m pip install -e ".[dev,api,spark]"
+      - name: Check Python code with Ruff
+        run: ruff check .
+      - name: Check Python formatting with Ruff
+        run: ruff format --check .
       - run: python scripts/test_coverage.py --with-customer-isolation -q
         env:
           SPARK_LOCAL_IP: 127.0.0.1

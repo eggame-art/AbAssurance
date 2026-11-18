@@ -48,22 +48,14 @@ def test_sqlserver_claim_mapping():
 
 
 def test_negative_claim_amount():
-    claim = {
-        "AB_CLAIM_ID": 51,
-        "AB_POLICY_NUMBER": "CONT-002",
-        "AB_MONTANT_ESTIME": -100,
-    }
+    claim = {"AB_CLAIM_ID": 51, "AB_POLICY_NUMBER": "CONT-002", "AB_MONTANT_ESTIME": -100}
 
     with pytest.raises(ValueError):
         map_claim(claim, "abassurance")
 
 
 def test_invalid_fraud_score():
-    claim = {
-        "AP_SINISTRE_NUM": 52,
-        "AP_CONTRACT_REF": "CONT-003",
-        "AP_FRAUD_SCORE": "invalid",
-    }
+    claim = {"AP_SINISTRE_NUM": 52, "AP_CONTRACT_REF": "CONT-003", "AP_FRAUD_SCORE": "invalid"}
 
     with pytest.raises(ValueError):
         map_claim(claim, "assureplus")

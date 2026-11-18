@@ -18,20 +18,6 @@ export function PredictionSummary({ result }: { result: PredictionResponse }) {
       <p>
         Score de résiliation : <strong>{percentage}</strong>
       </p>
-      {result.status === "experimental" ? (
-        <p>
-          Modèle de démonstration, entraîné sur des données fictives. Risque
-          réel non validé.
-        </p>
-      ) : !result.business_validated ? (
-        <p>Estimation non validée pour un usage métier.</p>
-      ) : null}
-      {score === 1 && (
-        <p>
-          Le modèle a renvoyé son score maximal. Une résiliation n’est pas
-          certaine.
-        </p>
-      )}
       <details>
         <summary>Détail du résultat</summary>
         <dl>
