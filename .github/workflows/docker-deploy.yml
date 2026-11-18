@@ -43,6 +43,12 @@ jobs:
           docker compose -f compose.production.yaml build --pull backend frontend
       - name: Verify service secrets inside the backend image
         run: docker compose -f compose.production.yaml run --rm --no-deps -T backend python - < deploy/check-secrets.py
+      - name: Verify repeatable demo loading on SQL Server
+        run: |
+          set -euo pipefail
+          trap 'docker compose -f compose.production.yaml stop sqlserver' EXIT
+          docker compose -f compose.production.yaml up -d --wait --wait-timeout 180 sqlserver
+          docker compose -f compose.production.yaml --profile tools run --rm --no-deps -T --entrypoint python demo-seed - < deploy/check-demo-seed.py
       - name: Test allowed and blocked connections
         run: node deploy/check-networks.mjs --runtime
       - name: Verify backend startup and authentication

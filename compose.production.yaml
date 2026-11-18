@@ -42,6 +42,27 @@ services:
     networks: [data]
     environment:
       HADOOP_HEAPSIZE: "512"
+  demo-seed:
+    profiles: [tools]
+    image: abassurance-backend:${RELEASE_TAG:-local}
+    platform: linux/amd64
+    entrypoint: [python, -m, abassurance.systems.demo_seed]
+    command: [--help]
+    networks: [data]
+    secrets: [oracle_app_password, sqlserver_admin_password]
+    environment:
+      ORACLE_DSN: oracle:1521/${ORACLE_SERVICE:-FREEPDB1}
+      ORACLE_USER: ${ORACLE_USER:-ABASSURANCE}
+      ORACLE_APP_PASSWORD_FILE: /run/secrets/oracle_app_password
+      SQLSERVER_HOST: sqlserver
+      SQLSERVER_USER: sa
+      SQLSERVER_PASSWORD_FILE: /run/secrets/sqlserver_admin_password
+      SQLSERVER_TRUST_CERTIFICATE: "yes"
+      SOURCE_DATA_KIND: ${SOURCE_DATA_KIND:-unspecified}
+    depends_on:
+      oracle: {condition: service_healthy}
+      sqlserver-init: {condition: service_completed_successfully}
+    restart: "no"
   backend:
     image: abassurance-backend:${RELEASE_TAG:-local}
     platform: linux/amd64
@@ -127,6 +148,8 @@ networks:
   # Spark needs outbound access to download its Maven connector.
   backend-egress:
 secrets:
+  sqlserver_admin_password:
+    environment: MSSQL_SA_PASSWORD
   # Compose reads these from the host/project environment, including .env.
   oracle_app_password:
     environment: ORACLE_APP_PASSWORD

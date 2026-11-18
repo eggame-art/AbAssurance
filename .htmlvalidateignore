@@ -1,0 +1,3 @@
+# Rapports HTML generes par les outils de couverture.
+/client/coverage/
+/coverage/
