@@ -1,4 +1,5 @@
 import { ContractPrediction } from "./ContractPrediction";
+import { PredictionSummary } from "./PredictionSummary";
 import { useEffect, useState } from "react";
 import { predictionController } from "../controllers/predictionController";
 import type {
@@ -124,10 +125,7 @@ export function PredictionPanel() {
           <p>
             Modèle : {model.model_id} ({model.algorithm})
           </p>
-          {(!model.business_validated || model.status === "experimental") && (
-            <p>Mod?le exp?rimental.</p>
-          )}
-          <p>Champ vide</p>
+          {!model.business_validated || model.status === "experimental"}
           <form
             className={styles.form}
             onSubmit={(event) => {
@@ -162,19 +160,8 @@ export function PredictionPanel() {
       )}
       {result && (
         <section aria-label="Résultat de prédiction">
-          <h3>Résultat</h3>
-          {(!result.business_validated || result.status === "experimental") && (
-            <p>Résultat</p>
-          )}
+          <PredictionSummary result={result} />
           <dl className={styles.result}>
-            <dd>
-              {(result.cancellation_probability * 100).toLocaleString("fr-FR", {
-                maximumFractionDigits: 2,
-              })}{" "}
-              %
-            </dd>
-            <dt>Classe prédite</dt>
-            <dd>{result.predicted_class}</dd>
             <dt>Modèle</dt>
             <dd>{result.model_id}</dd>
           </dl>

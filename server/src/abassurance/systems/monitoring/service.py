@@ -70,7 +70,7 @@ def check_oracle(env: Environment) -> None:
 
     config = OracleConfig(
         user=env.get("ORACLE_USER", "ABASSURANCE"),
-        password=env.required("ORACLE_APP_PASSWORD"),
+        password=env.secret("ORACLE_APP_PASSWORD"),
         dsn=env.get("ORACLE_DSN")
         or f"{env.get('ORACLE_HOST', '127.0.0.1')}:{port}/{env.get('ORACLE_SERVICE', 'FREEPDB1')}",
         timeout=CHECK_TIMEOUT,

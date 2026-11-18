@@ -63,6 +63,42 @@ def test_hop_credentials_are_private_not_command_arguments_and_are_removed(launc
     assert not paths[0].exists()
 
 
+def test_production_hop_refuses_admin_identity_and_password_fallback(launcher, monkeypatch):
+    monkeypatch.setenv("SQLSERVER_REQUIRE_SERVICE_ACCOUNT", "true")
+    monkeypatch.setenv("SQLSERVER_USER", "sa")
+
+    with pytest.raises(ValueError, match="dedicated service account"):
+        launcher.configuration()
+
+    monkeypatch.setenv("SQLSERVER_USER", "abassurance_reader")
+    monkeypatch.delenv("SQLSERVER_PASSWORD")
+    monkeypatch.setenv("MSSQL_SA_PASSWORD", "admin-only-secret")
+
+    with pytest.raises(ValueError, match="SQLSERVER_PASSWORD"):
+        launcher.configuration()
+
+
+def test_hop_reads_database_passwords_from_secret_files(launcher, monkeypatch, tmp_path):
+    for key in ("ORACLE_APP_PASSWORD", "SQLSERVER_PASSWORD"):
+        path = tmp_path / key
+        path.write_text("file-only-secret\n", encoding="utf-8")
+        monkeypatch.delenv(key)
+        monkeypatch.setenv(key + "_FILE", str(path))
+    values = launcher.configuration()
+
+    assert values["ORACLE_APP_PASSWORD"] == "file-only-secret"
+    assert values["SQLSERVER_PASSWORD"] == "file-only-secret"
+
+
+def test_hop_does_not_fall_back_when_secret_file_is_missing(launcher, monkeypatch, tmp_path):
+    monkeypatch.delenv("SQLSERVER_PASSWORD")
+    monkeypatch.setenv("SQLSERVER_PASSWORD_FILE", str(tmp_path / "missing"))
+    monkeypatch.setenv("MSSQL_SA_PASSWORD", "admin-secret")
+
+    with pytest.raises(ValueError, match="Cannot read secret: SQLSERVER_PASSWORD"):
+        launcher.configuration()
+
+
 def test_eight_native_pipelines_read_jdbc_publish_kafka_and_count_sources():
     project = PROJECT_ROOT / "Infrastructure/hop/project"
     pipelines = list((project / "pipelines").glob("*.hpl"))

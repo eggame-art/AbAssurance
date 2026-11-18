@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 
 from abassurance.shared.errors import ConfigurationError
+from abassurance.shared.spark_runtime import SparkBusy
 from abassurance.systems.data_api.schemas import (
     ClaimsResponse,
     ClientsResponse,
@@ -112,6 +113,8 @@ async def consolidated(
                 else get_consolidated(spark, entity, offset, limit, selected.id)
             )
         )
+    except SparkBusy as exc:
+        raise HTTPException(429, "Data service is busy. Try again later.", headers={"Retry-After": "3"}) from exc
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="No completed consolidated snapshot is available.") from exc
     except TimeoutError as exc:

@@ -24,8 +24,28 @@ class Environment:
         result = self.get(name, fallback)
         if not result.strip():
             raise ConfigurationError(f"Missing environment variable: {name}")
-        
+
         return result
+
+    def secret(self, name: str, fallback: str = "") -> str:
+        path = self.get(f"{name}_FILE")
+        if not path:
+            return self.required(name, fallback)
+        if self.get(name):
+            raise ConfigurationError(f"Set either {name} or {name}_FILE, not both")
+
+        try:
+            with Path(path).open("rb") as source:
+                data = source.read(4097)
+            if len(data) > 4096:
+                raise ValueError
+            value = data.decode("utf-8").rstrip("\r\n")
+        except (OSError, UnicodeError, ValueError):
+            raise ConfigurationError(f"Cannot read secret: {name}") from None
+        if not value.strip():
+            raise ConfigurationError(f"Empty secret: {name}")
+
+        return value
 
     def integer(self, name: str, default: str, maximum: int) -> int:
         with error_context(f"{name} must be an integer", (ValueError,), ConfigurationError):
@@ -33,12 +53,12 @@ class Environment:
 
         if not 1 <= result <= maximum:
             raise ConfigurationError(f"{name} must be between 1 and {maximum}")
-        
+
         return result
 
     def boolean(self, name: str, default: str) -> bool:
         result = self.get(name, default).strip().lower()
         if result not in {"yes", "no", "true", "false", "1", "0"}:
             raise ConfigurationError(f"{name} must be yes/no or true/false")
-        
+
         return result in {"yes", "true", "1"}

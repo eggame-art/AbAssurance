@@ -56,6 +56,155 @@ def test_status_is_public_without_exposing_routes(client):
     assert client.get("/auth/status").json() == {"status": "ok"}
 
 
+def test_personal_data_always_uses_the_connected_customer(client, monkeypatch):
+    service.create_user("second", "second-test-password", "user", "assureplus", "200")
+    read = Mock(
+        return_value=ConsolidatedResponse(
+            entity="clients",
+            integration_id="a" * 32,
+            snapshot="b" * 32,
+            data_kind="demo",
+            columns=[],
+            records=[],
+            offset=0,
+            limit=25,
+            total=0,
+        )
+    )
+    monkeypatch.setattr(routes, "get_consolidated", read)
+
+    async def run(action):
+        return action("spark")
+
+    client.app.state.spark_runtime = SimpleNamespace(run=run, close=Mock())
+    for username, owner in [("user", ("abassurance", "100")), ("second", ("assureplus", "200"))]:
+        assert login(client, username).status_code == 200
+
+        response = client.get("/me/data/clients?source=other&source_id=999&role=admin")
+
+        assert response.status_code == 200
+        assert read.call_args.kwargs["owner"] == owner
+        assert client.post("/auth/logout").status_code == 200
+
+
+def test_admin_without_customer_cannot_use_personal_data(client):
+    login(client, "admin")
+    assert client.get("/me/data/clients").status_code == 403
+
+
+def test_personal_prediction_uses_session_identity_and_requires_login(client, monkeypatch):
+    from abassurance.systems.data_integration.mapping.identifiers import make_id
+    from abassurance.systems.prediction_api import contracts
+    from abassurance.systems.prediction_api.routes import get_service
+
+    body = {
+        "contract_id": make_id("abassurance", "C-100", "contracts"),
+        "integration_id": "a" * 32,
+        "observation_date": "2025-01-01",
+    }
+    expected = {**body, "customer_id": make_id("abassurance", "100", "customers")}
+    result = contracts.ContractResult.model_validate(
+        {
+            **expected,
+            "snapshot": "b" * 32,
+            "features": {"claim_count": 1},
+            "prediction": {
+                "cancellation_probability": 0.2,
+                "predicted_class": 0,
+                "model_id": "c" * 32,
+                "status": "experimental",
+                "business_validated": False,
+            },
+        }
+    )
+    calculate = Mock(return_value=result)
+    monkeypatch.setattr(contracts, "predict_contract", calculate)
+    predictor = object()
+    client.app.dependency_overrides[get_service] = lambda: predictor
+
+    async def run(action, **kwargs):
+        return action("spark")
+
+    client.app.state.spark_runtime = SimpleNamespace(run=run, close=Mock())
+    assert client.post("/me/predict/contract", json=body).status_code == 401
+    login(client)
+    response = client.post("/me/predict/contract?source_id=101&role=admin", json=body)
+    assert response.status_code == 200
+    assert response.json()["customer_id"] == expected["customer_id"]
+    calculate.assert_called_once_with(
+        "spark", contracts.ContractInput.model_validate(expected), predictor, owner=("abassurance", "100")
+    )
+    calculate.reset_mock()
+    for forged in (
+        {"customer_id": make_id("abassurance", "101", "customers")},
+        {"claim_count": 0},
+        {"source": "assureplus"},
+    ):
+        assert client.post("/me/predict/contract", json=body | forged).status_code == 422
+    calculate.assert_not_called()
+    client.post("/auth/logout")
+    login(client, "admin")
+    assert client.post("/me/predict/contract", json=body).status_code == 403
+
+
+@pytest.mark.parametrize("error,status", [(FileNotFoundError, 404), (TimeoutError, 504), (RuntimeError, 503)])
+def test_personal_data_failures_are_reported_without_private_diagnostics(client, error, status):
+    async def run(action):
+        raise error("private-host confidential-data")
+
+    client.app.state.spark_runtime = SimpleNamespace(run=run, close=Mock())
+    login(client)
+    response = client.get("/me/data/clients")
+    assert response.status_code == status
+    assert "private-host" not in response.text
+    assert "confidential-data" not in response.text
+
+
+def test_login_limit_cannot_be_bypassed_by_changing_username(client, monkeypatch):
+    hashing = Mock(wraps=service.password_hash)
+    monkeypatch.setattr(service, "password_hash", hashing)
+    for i in range(20):
+        assert client.post("/auth/login", json={"username": f"unknown-{i}", "password": "wrong"}).status_code == 401
+    response = client.post("/auth/login", json={"username": "another-account", "password": "wrong"})
+    assert response.status_code == 429
+    assert int(response.headers["Retry-After"]) > 0
+    assert hashing.call_count == 20
+
+
+def test_large_login_is_rejected_before_password_hashing(client, monkeypatch):
+    hashing = Mock(wraps=service.password_hash)
+    monkeypatch.setattr(service, "password_hash", hashing)
+    assert client.post("/auth/login", content=b"x" * 65537).status_code == 413
+    hashing.assert_not_called()
+
+
+def test_account_limit_returns_429_and_logout_still_works(client):
+    login(client, "admin")
+    limits = client.app.state.request_limits
+    for _ in range(120):
+        limits.retry_after("account:admin", 120)
+    response = client.get("/docs")
+    assert response.status_code == 429
+    assert "Retry-After" in response.headers
+    assert client.post("/auth/logout").status_code == 200
+    assert client.get("/auth/status").status_code == 200
+
+
+@pytest.mark.parametrize("username,path", [("user", "/me/data/clients"), ("admin", "/model")])
+def test_spark_queue_full_is_reported_as_429(client, username, path):
+    from abassurance.shared.spark_runtime import SparkBusy
+
+    async def busy(action, **kwargs):
+        raise SparkBusy("internal queue details")
+
+    client.app.state.spark_runtime = SimpleNamespace(run=busy, close=Mock())
+    login(client, username)
+    response = client.get(path)
+    assert response.status_code == 429
+    assert response.headers["Retry-After"] == "3"
+    assert "internal queue details" not in response.text
+
+
 def test_login_without_client_address(client):
     request = Request({"type": "http", "headers": [], "client": None})
     response = Response()

@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import { authController } from "../controllers/authController";
+import { PersonalPrediction } from "../components/PersonalPrediction";
 import type {
   ConsolidatedResponse,
   DataEntity,
@@ -84,10 +85,10 @@ export function PersonalPage() {
             setEntity(event.target.value as DataEntity);
           }}
         >
-          <option value="clients">Mon profil</option>
-          <option value="contracts">Mes contrats</option>
-          <option value="claims">Mes sinistres</option>
-          <option value="payments">Mes paiements</option>
+          <option value="clients">client</option>
+          <option value="contracts">contracts</option>
+          <option value="claims">claims</option>
+          <option value="payments">payments</option>
         </select>
       </label>{" "}
       <button
@@ -101,6 +102,12 @@ export function PersonalPage() {
       {data && (
         <>
           {data.data_kind === "demo" && <p>Données de démonstration.</p>}
+          {entity === "contracts" && data.total > 0 && (
+            <PersonalPrediction
+              key={`${data.integration_id}:${offset}:${refresh}`}
+              contracts={data}
+            />
+          )}
           {data.total === 0 ? (
             <p>Aucun enregistrement.</p>
           ) : (

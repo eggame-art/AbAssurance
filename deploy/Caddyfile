@@ -1,4 +1,7 @@
 {$SITE_ADDRESS:localhost} {
+    request_body {
+        max_size 65536
+    }
     handle_path /api/* {
         reverse_proxy backend:8000
     }

@@ -321,11 +321,6 @@ export function ContractPrediction({ onResult }: ContractPredictionProps) {
           <pre>{JSON.stringify(result.features, null, 2)}</pre>
         </details>
       )}
-
-      <p>
-        Test expérimental sur un snapshot. Une date passée ne reconstitue pas
-        l’historique métier.
-      </p>
     </section>
   );
 }
