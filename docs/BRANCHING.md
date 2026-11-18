@@ -26,6 +26,7 @@
 - ci : modification de l'intégration continue.
 - perf : amélioration des performances.
 - style : modification du formatage sans changement de logique.
+- security : ajout d'une fonctionnalité lié à la sécurité.
 
 ## Règles de nommage
 
