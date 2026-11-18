@@ -141,6 +141,19 @@ def test_missing_and_null_values_are_passed_to_saved_preprocessing(client):
         assert service.spark.createDataFrame.call_args.args[0] == [(None,) * 6]
 
 
+@pytest.mark.parametrize("probability", [0.1096, 0.99999999, 1.0])
+def test_prediction_preserves_the_pipeline_probability_without_rounding_or_replacing_it(runtime, probability):
+    from abassurance.systems.prediction_api.schemas import PredictionRequest
+
+    runtime.model.transform.return_value.select.return_value.first.return_value = SimpleNamespace(
+        probability=[1 - probability, probability], prediction=1.0 if probability >= 0.5 else 0.0
+    )
+    request = PredictionRequest(claim_count=2)
+    assert runtime.predict(request).cancellation_probability == probability
+    assert runtime.predict(request).cancellation_probability == probability
+    assert runtime.model.transform.call_count == 2
+
+
 def test_subset_order_and_unused_features_are_enforced(client):
     client, service, _ = client
     service.info.feature_columns = ["payment_count", "claim_count"]

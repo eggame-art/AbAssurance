@@ -44,6 +44,7 @@ const labels: Record<string, string> = {
 };
 
 export function PersonalPage() {
+  const [view, setView] = useState<"data" | "prediction">("data");
   const [entity, setEntity] = useState<DataEntity>("clients");
   const [offset, setOffset] = useState(0);
   const [refresh, setRefresh] = useState(0);
@@ -52,6 +53,7 @@ export function PersonalPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (view !== "data") return;
     const abort = new AbortController();
     setLoading(true);
     setData(null);
@@ -71,86 +73,103 @@ export function PersonalPage() {
         if (!abort.signal.aborted) setLoading(false);
       });
     return () => abort.abort();
-  }, [entity, offset, refresh]);
+  }, [view, entity, offset, refresh]);
 
   return (
     <section>
-      <h1>Mes données</h1>
-      <label>
-        Type de données{" "}
-        <select
-          value={entity}
-          onChange={(event) => {
-            setOffset(0);
-            setEntity(event.target.value as DataEntity);
-          }}
+      <h1>Mon espace</h1>
+      <nav aria-label="Mon espace">
+        <button
+          type="button"
+          aria-pressed={view === "data"}
+          onClick={() => setView("data")}
         >
-          <option value="clients">client</option>
-          <option value="contracts">contracts</option>
-          <option value="claims">claims</option>
-          <option value="payments">payments</option>
-        </select>
-      </label>{" "}
-      <button
-        disabled={loading}
-        onClick={() => setRefresh((value) => value + 1)}
-      >
-        Actualiser
-      </button>
-      {loading && <p role="status">Chargement...</p>}
-      {error && <p role="alert">{error}</p>}
-      {data && (
+          Mes données
+        </button>{" "}
+        <button
+          type="button"
+          aria-pressed={view === "prediction"}
+          onClick={() => setView("prediction")}
+        >
+          Faire une prédiction
+        </button>
+      </nav>
+      {view === "prediction" ? (
+        <PersonalPrediction />
+      ) : (
         <>
-          {data.data_kind === "demo" && <p>Données de démonstration.</p>}
-          {entity === "contracts" && data.total > 0 && (
-            <PersonalPrediction
-              key={`${data.integration_id}:${offset}:${refresh}`}
-              contracts={data}
-            />
-          )}
-          {data.total === 0 ? (
-            <p>Aucun enregistrement.</p>
-          ) : (
-            <div className={styles.container}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    {data.columns.map((column) => (
-                      <th key={column} scope="col">
-                        {labels[column] ?? column}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.records.map((record, index) => (
-                    <tr key={index}>
-                      {data.columns.map((column) => (
-                        <td key={column}>
-                          {String(record.data[column] ?? "")}
-                        </td>
+          <h2>Mes données</h2>
+          <label>
+            Type de données{" "}
+            <select
+              value={entity}
+              onChange={(event) => {
+                setOffset(0);
+                setEntity(event.target.value as DataEntity);
+              }}
+            >
+              <option value="clients">client</option>
+              <option value="contracts">contracts</option>
+              <option value="claims">claims</option>
+              <option value="payments">payments</option>
+            </select>
+          </label>{" "}
+          <button
+            disabled={loading}
+            onClick={() => setRefresh((value) => value + 1)}
+          >
+            Actualiser
+          </button>
+          {loading && <p role="status">Chargement...</p>}
+          {error && <p role="alert">{error}</p>}
+          {data && (
+            <>
+              {data.data_kind === "demo" && <p>Données de démonstration.</p>}
+              {data.total === 0 ? (
+                <p>Aucun enregistrement.</p>
+              ) : (
+                <div className={styles.container}>
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        {data.columns.map((column) => (
+                          <th key={column} scope="col">
+                            {labels[column] ?? column}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.records.map((record, index) => (
+                        <tr key={index}>
+                          {data.columns.map((column) => (
+                            <td key={column}>
+                              {String(record.data[column] ?? "")}
+                            </td>
+                          ))}
+                        </tr>
                       ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <div className={styles.pagination}>
+                <button
+                  disabled={offset === 0}
+                  onClick={() => setOffset((value) => Math.max(0, value - 25))}
+                >
+                  Précédent
+                </button>
+                <span>{data.total} enregistrements</span>
+                <button
+                  disabled={offset + 25 >= data.total}
+                  onClick={() => setOffset((value) => value + 25)}
+                >
+                  Suivant
+                </button>
+              </div>
+            </>
           )}
-          <div className={styles.pagination}>
-            <button
-              disabled={offset === 0}
-              onClick={() => setOffset((value) => Math.max(0, value - 25))}
-            >
-              Précédent
-            </button>
-            <span>{data.total} enregistrements</span>
-            <button
-              disabled={offset + 25 >= data.total}
-              onClick={() => setOffset((value) => value + 25)}
-            >
-              Suivant
-            </button>
-          </div>
         </>
       )}
     </section>

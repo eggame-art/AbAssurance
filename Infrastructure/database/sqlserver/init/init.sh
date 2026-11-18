@@ -1,5 +1,7 @@
 set -Eeuo pipefail
 
+bash /init/wait-ready.sh
+
 /opt/mssql-tools18/bin/sqlcmd -S sqlserver -U sa -C -b -l 30 \
     -i /init/schema.sql
 /opt/mssql-tools18/bin/sqlcmd -S sqlserver -U sa -C -b -l 30 \

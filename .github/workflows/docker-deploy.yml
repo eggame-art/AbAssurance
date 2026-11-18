@@ -28,6 +28,7 @@ jobs:
       - name: Check network isolation policy
         run: |
           node --test deploy/check-networks.test.mjs
+          node --test deploy/wait-sqlserver.test.mjs
           node deploy/check-networks.mjs
       - name: Verify SQL service permissions on a real database
         run: |
@@ -36,6 +37,9 @@ jobs:
           docker compose -f compose.production.yaml up -d --wait --wait-timeout 180 sqlserver
           docker compose -f compose.production.yaml run --rm --no-deps sqlserver-init
           # A second run verifies existing volumes and account reprovisioning.
+          docker compose -f compose.production.yaml run --rm --no-deps sqlserver-init
+          # Initialization also has to tolerate recovery after a restart.
+          docker compose -f compose.production.yaml restart sqlserver
           docker compose -f compose.production.yaml run --rm --no-deps sqlserver-init
       - name: Validate Compose and build production images
         run: |

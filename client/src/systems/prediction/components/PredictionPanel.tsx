@@ -161,10 +161,6 @@ export function PredictionPanel() {
       {result && (
         <section aria-label="Résultat de prédiction">
           <PredictionSummary result={result} />
-          <dl className={styles.result}>
-            <dt>Modèle</dt>
-            <dd>{result.model_id}</dd>
-          </dl>
           <details>
             <summary>Réponse API</summary>
             <pre>{JSON.stringify(result, null, 2)}</pre>
