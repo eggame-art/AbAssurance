@@ -124,7 +124,6 @@ export function PersonalPage() {
           {error && <p role="alert">{error}</p>}
           {data && (
             <>
-              {data.data_kind === "demo" && <p>Données de démonstration.</p>}
               {data.total === 0 ? (
                 <p>Aucun enregistrement.</p>
               ) : (
