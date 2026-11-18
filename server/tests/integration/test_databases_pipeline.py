@@ -109,7 +109,11 @@ def test_driver_types_and_fictional_transformations(raw_data, exports):
     customers = {row["customer_id"]: row for row in data["customers"]}
     assert customers["0ce23490-7b17-57a3-933d-829abb01a605"]["full_name"] == "Jean Dupont"
     assert customers["3fff094d-64af-55c0-abc9-2e86a559959e"]["full_name"] == "Marie Martin"
-    assert customers["0ce23490-7b17-57a3-933d-829abb01a605"]["source_id"] == customers["3fff094d-64af-55c0-abc9-2e86a559959e"]["source_id"] == "100"
+    assert (
+        customers["0ce23490-7b17-57a3-933d-829abb01a605"]["source_id"]
+        == customers["3fff094d-64af-55c0-abc9-2e86a559959e"]["source_id"]
+        == "100"
+    )
     assert customers["0ce23490-7b17-57a3-933d-829abb01a605"]["birth_date"] == "1990-05-12"
 
     contracts = {row["contract_id"]: row for row in data["contracts"]}

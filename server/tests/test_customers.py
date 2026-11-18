@@ -68,12 +68,7 @@ def test_complete_oracle_customer():
 
 
 def test_invalid_birth_date():
-    customer = {
-        "AB_CLIENT_ID": 101,
-        "AB_PRENOM": "Paul",
-        "AB_NOM": "Martin",
-        "AB_DATE_NAISSANCE": "invalid-date",
-    }
+    customer = {"AB_CLIENT_ID": 101, "AB_PRENOM": "Paul", "AB_NOM": "Martin", "AB_DATE_NAISSANCE": "invalid-date"}
 
     with pytest.raises(ValueError):
         map_customer(customer, "abassurance")

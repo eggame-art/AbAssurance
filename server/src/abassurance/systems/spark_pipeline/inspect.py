@@ -16,7 +16,7 @@ def main() -> int:
     if not 1 <= args.limit <= 1000:
         parser.error("--limit must be between 1 and 1000")
 
-    if (args.state_dir.startswith("hdfs:")):
+    if args.state_dir.startswith("hdfs:"):
         from abassurance.systems.spark_pipeline.hdfs import HdfsState, read_snapshot
         from abassurance.systems.spark_pipeline.run import create_session
 
@@ -27,7 +27,7 @@ def main() -> int:
 
             print(json.dumps(manifest, ensure_ascii=False, indent=2))
 
-            if (args.entity):
+            if args.entity:
                 frame = read_snapshot(spark, args.state_dir, args.entity, manifest=manifest)
 
                 for row in frame.limit(args.limit).toJSON().toLocalIterator():

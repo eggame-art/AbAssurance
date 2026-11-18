@@ -35,13 +35,15 @@ def clean_datasets(sources: dict[str, Datasets], mappers: dict[str, Mapper]) -> 
                     mapped = map_records([record], source, entity, mapper)[0]
                     validate_record(mapped, entity, identifiers, parents)
                 except PipelineError as exc:
-                    rejected.append({
-                        "entity": entity,
-                        "source_system": source,
-                        "row": position,
-                        "reason": str(exc.__cause__ or exc),
-                        "record": _source_record(record),
-                    })
+                    rejected.append(
+                        {
+                            "entity": entity,
+                            "source_system": source,
+                            "row": position,
+                            "reason": str(exc.__cause__ or exc),
+                            "record": _source_record(record),
+                        }
+                    )
                     continue
 
                 identifiers.add(mapped[ID_FIELDS[entity]])

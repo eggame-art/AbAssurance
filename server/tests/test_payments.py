@@ -49,21 +49,14 @@ def test_sqlserver_payment_mapping():
 
 
 def test_negative_payment_amount():
-    payment = {
-        "AB_PAYMENT_ID": 501,
-        "AB_POLICY_NUMBER": "CONT-002",
-        "AB_MONTANT": -100,
-    }
+    payment = {"AB_PAYMENT_ID": 501, "AB_POLICY_NUMBER": "CONT-002", "AB_MONTANT": -100}
 
     with pytest.raises(ValueError):
         map_payment(payment, "abassurance")
 
 
 def test_missing_payment_identifier():
-    payment = {
-        "AB_PAYMENT_ID": None,
-        "AB_POLICY_NUMBER": "CONT-002",
-    }
+    payment = {"AB_PAYMENT_ID": None, "AB_POLICY_NUMBER": "CONT-002"}
 
     with pytest.raises(ValueError):
         map_payment(payment, "abassurance")

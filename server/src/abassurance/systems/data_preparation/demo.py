@@ -1,4 +1,4 @@
-﻿import argparse
+import argparse
 import json
 import re
 from datetime import date, datetime, timedelta
@@ -282,4 +282,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

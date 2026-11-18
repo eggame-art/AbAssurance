@@ -30,11 +30,11 @@ def main() -> int:
 
     status = run_cli(initialize_databases, LOGGER, "Initialization failed")
 
-    if (status == 0):
+    if status == 0:
         print("Oracle and SQL Server initialized; existing data preserved.")
 
     return status
 
 
-if (__name__ == "__main__"):
+if __name__ == "__main__":
     raise SystemExit(main())

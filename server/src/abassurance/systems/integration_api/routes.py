@@ -33,7 +33,8 @@ def require_admin(request: Request, authorization: Annotated[str | None, Header(
     "/latest",
     response_model=IntegrationRun | None,
     summary="Voir la dernière intégration",
-    description="Administrateur. Renvoie l'état, les dates et le résultat du dernier traitement, ou null s'il n'y en a pas.",
+    description="Administrateur. Renvoie l'état, les dates et le résultat du dernier traitement, "
+    "ou null s'il n'y en a pas.",
 )
 def get_latest(response: Response) -> IntegrationRun | None:
     response.headers["Cache-Control"] = "no-store"

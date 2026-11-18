@@ -52,22 +52,14 @@ def test_sqlserver_contract_mapping():
 
 
 def test_invalid_premium():
-    contract = {
-        "AB_POLICY_NUMBER": "CONT-002",
-        "AB_CLIENT_ID": 101,
-        "AB_PRIME_ANNUELLE": -500,
-    }
+    contract = {"AB_POLICY_NUMBER": "CONT-002", "AB_CLIENT_ID": 101, "AB_PRIME_ANNUELLE": -500}
 
     with pytest.raises(ValueError):
         map_contract(contract, "abassurance")
 
 
 def test_monthly_premium_conversion():
-    contract = {
-        "AP_CONTRACT_REF": "CONT-003",
-        "AP_USER_ID": 102,
-        "AP_MONTHLY_PREMIUM": Decimal("99.99"),
-    }
+    contract = {"AP_CONTRACT_REF": "CONT-003", "AP_USER_ID": 102, "AP_MONTHLY_PREMIUM": Decimal("99.99")}
 
     result = map_contract(contract, "assureplus")
 
