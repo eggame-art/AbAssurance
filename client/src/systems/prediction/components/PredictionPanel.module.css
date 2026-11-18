@@ -14,14 +14,3 @@
   align-self: end;
   justify-self: start;
 }
-
-.result {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 0.5rem 1rem;
-}
-
-.result dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-}

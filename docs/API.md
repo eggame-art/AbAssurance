@@ -45,7 +45,12 @@ Le modèle doit être entraîné et disponible dans HDFS.
 `POST /predict` renvoie notamment `cancellation_probability`, `predicted_class` et `model_id`.
 Un modèle expérimental n'est pas une validation métier du risque.
 
-Le pourcentage affiché est une probabilité estimée par le modèle, pas un taux de résiliation observé.
+Le pourcentage affiché est le score calculé par le modèle, pas un taux de résiliation observé.
+La sortie vient de `PipelineModel.transform(...).probability[1]` ; l'API ne tire pas de valeur au hasard.
+Une valeur proche de 1 est affichée « Plus de 99,99 % » pour éviter de l'arrondir à 100 %.
+Une sortie exactement égale à 1 reste affichée à 100 %, sans signifier une résiliation certaine.
+Le détail du résultat montre le score brut et l'identifiant du modèle ; les données du calcul sont aussi consultables.
+L'accès « Faire une prédiction » est disponible directement dans l'espace utilisateur.
 En mode expérimental, le modèle est entraîné sur des données fictives et le résultat est une démonstration.
 Les 10 000 clients fictifs ajoutés aux bases ne constituent pas un historique réel d'entraînement.
 
